@@ -4,6 +4,8 @@ __pycache__/
 launcher/.gradle/
 launcher/build/
 launcher/app/build/
+launcher/headunit/build/
+launcher/headunit/.previous-home
 launcher/local.properties
 # your own TV's dumps (serial, android_id, device names) stay local
 backup/
