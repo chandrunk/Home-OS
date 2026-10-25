@@ -7,11 +7,11 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId 'com.gathin.tvhome'
+        applicationId 'com.homeprojects.glasslauncher'
         minSdk 26
         targetSdk 34
         versionCode 8
-        versionName '2.6.0'
+        versionName '2.6.0-home'
     }
 
     buildTypes {

@@ -144,12 +144,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView btnWifi;
     private TextView ampmView, dateView;
     private TextView shamsiDate;
-    private TextView prayerTimesView;
     private TextView weatherAirQualityView;
-    private View islamicShelf;
-    private TextView ayatRef, ayatArabic, ayatTranslation, prayerHeader;
-    private TextView lblSubuh, lblSyuruk, lblZohor, lblAsar, lblMaghrib, lblIsyak;
-    private TextView timeSubuh, timeSyuruk, timeZohor, timeAsar, timeMaghrib, timeIsyak;
     private boolean shamsi;
     private String vpnApp;
     private SpringAnimation springX, springY;
@@ -265,13 +260,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private final Runnable minuteTick = new Runnable() {
         @Override
         public void run() {
+            NetTime.syncIfDue();
             updateShamsiDate();
-            updatePrayerTimes();
             updateDateAndPeriod();
             updateWifiLabel();
             updateWeatherAqi();
             WeatherAirQuality.syncIfDue(MainActivity.this, MainActivity.this::updateWeatherAqi);
-            updateIslamicShelf();
             refreshPlacesIfDue();
             refreshOnlineWallpapersIfDue();
             checkInactivity();
@@ -395,33 +389,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
 
-        islamicShelf = findViewById(R.id.islamicShelf);
-        if (islamicShelf != null) {
-            ayatRef = findViewById(R.id.ayatRef);
-            ayatArabic = findViewById(R.id.ayatArabic);
-            ayatTranslation = findViewById(R.id.ayatTranslation);
-            prayerHeader = findViewById(R.id.prayerHeader);
-
-            lblSubuh = findViewById(R.id.lblSubuh);
-            lblSyuruk = findViewById(R.id.lblSyuruk);
-            lblZohor = findViewById(R.id.lblZohor);
-            lblAsar = findViewById(R.id.lblAsar);
-            lblMaghrib = findViewById(R.id.lblMaghrib);
-            lblIsyak = findViewById(R.id.lblIsyak);
-
-            timeSubuh = findViewById(R.id.timeSubuh);
-            timeSyuruk = findViewById(R.id.timeSyuruk);
-            timeZohor = findViewById(R.id.timeZohor);
-            timeAsar = findViewById(R.id.timeAsar);
-            timeMaghrib = findViewById(R.id.timeMaghrib);
-            timeIsyak = findViewById(R.id.timeIsyak);
-
-            islamicShelf.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, orr, ob) -> {
-                if (heroBottom > 0) v.setY(heroBottom - v.getHeight());
-            });
-            updateIslamicShelf();
-        }
-
         btnWifi = findViewById(R.id.btnWifi);
         if (!cfg.showNetworkPill) btnWifi.setVisibility(View.GONE);
         shamsiDate = findViewById(R.id.shamsiDate);
@@ -432,34 +399,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             date.setTextSize(11f);
             date.setPadding(0, (int) (4 * density), 0, 0);
         }
-        prayerTimesView = findViewById(R.id.prayerTimes);
-        if (prayerTimesView != null) {
-            prayerTimesView.setOnClickListener(v -> showPrayerPopup());
-            prayerTimesView.setOnKeyListener((v, keyCode, event) -> {
-                if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
-                    View inputs = findViewById(R.id.btnInputs);
-                    View wifi = findViewById(R.id.btnWifi);
-                    View settings = findViewById(R.id.btnSettings);
-                    if (inputs != null && inputs.getVisibility() == View.VISIBLE) inputs.requestFocus();
-                    else if (wifi != null && wifi.getVisibility() == View.VISIBLE) wifi.requestFocus();
-                    else if (settings != null) settings.requestFocus();
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    focusTile(lastFocused % COLUMNS);
-                    return true;
-                }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) return true;
-                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                    showPrayerPopup();
-                    return true;
-                }
-                return false;
-            });
-        }
-        updatePrayerTimes();
-        PrayerTimes.syncIfDue(this, this::updatePrayerTimes);
         vpnApp = cfg.vpnApp;
         moduleCards = cfg.moduleCards;
         hiddenApps = new HashSet<>(cfg.hiddenApps);
@@ -502,14 +441,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             Backdrop.watch(pill);
             pill.setOnFocusChangeListener((v, has) -> {
                 if (has) moveTopHighlight(v);
-            });
-        }
-        if (prayerTimesView != null) {
-            prayerTimesView.setOnFocusChangeListener((v, has) -> {
-                if (has) {
-                    SoundEffects.playNav();
-                    glider.hide();
-                }
             });
         }
         // The apps rise into place on the first launch after the TV starts, and only then. Setting
@@ -610,10 +541,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         return true;
                     }
                 }
-                if (v.getId() == R.id.btnInputs && prayerTimesView != null && prayerTimesView.getVisibility() == View.VISIBLE) {
-                    prayerTimesView.requestFocus();
-                    return true;
-                }
                 // The left end is Inputs, or Wi-Fi on a box without inputs, or Settings when both are gone.
                 return v.getId() == R.id.btnInputs
                         || (v.getId() == R.id.btnWifi && btnInputs.getVisibility() != View.VISIBLE)
@@ -648,9 +575,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
                     .build(), vpnCallback);
         }
-
-        // Silent background update check after 5 seconds on launch
-        handler.postDelayed(() -> AppUpdateManager.checkForUpdates(this, false), 5000);
     }
 
     /**
@@ -897,12 +821,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         resuming = true;
         reloadApps(true);
         updateShamsiDate();
-        updatePrayerTimes();
         updateDateAndPeriod();
         updateWifiLabel();
         updateWeatherAqi();
         WeatherAirQuality.syncIfDue(this, this::updateWeatherAqi);
-        updateIslamicShelf();
         updateInputsButton();
         startWallpaperRotation();
         handler.postDelayed(minuteTick, MINUTE_MS);
@@ -1039,9 +961,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     public void refreshLocationDependentData() {
         updateWeatherAqi();
-        updatePrayerTimes();
         WeatherAirQuality.sync(this, this::updateWeatherAqi);
-        PrayerTimes.sync(this, this::updatePrayerTimes);
     }
 
     @Override
@@ -1092,9 +1012,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         if (heroShelf != null) {
             heroShelf.animate().alpha(alpha).setDuration(duration).start();
-        }
-        if (islamicShelf != null) {
-            islamicShelf.animate().alpha(alpha).setDuration(duration).start();
         }
         if (glass != null) {
             glass.animate().alpha(alpha).setDuration(duration).start();
@@ -1204,18 +1121,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void showHero(int position, float dockTopInRoot) {
         int color = adapter.ambientColorAt(position);
         heroBottom = dockTopInRoot - HERO_GAP_DP * density;
-
-        if (islamicShelf != null) {
-            float iy = heroBottom - islamicShelf.getHeight();
-            islamicShelf.setY(iy);
-            if (!heroShown) {
-                islamicShelf.animate().cancel();
-                if (firstFrameHeld || resuming) islamicShelf.setAlpha(1f);
-                else islamicShelf.animate().alpha(1f).setDuration(260).start();
-            } else {
-                islamicShelf.setAlpha(1f);
-            }
-        }
 
         // When using custom wallpaper, disable the description part completely
         if (isCustomWallpaper()) {
@@ -1424,13 +1329,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         String country = about != null && about.length > 2 ? about[2] : "";
         if (country != null) {
             country = country.replaceAll("(?i)\\bunsplash\\s*•?\\s*", "").trim();
-            if (country.startsWith("Malaysia_")) {
-                String st = country.substring("Malaysia_".length());
-                if ("WP".equalsIgnoreCase(st)) st = "Wilayah Persekutuan";
-                else if ("NegeriSembilan".equalsIgnoreCase(st)) st = "Negeri Sembilan";
-                else if ("PulauPinang".equalsIgnoreCase(st)) st = "Pulau Pinang";
-                country = st + ", Malaysia";
-            }
         }
         if (title != null) {
             title = title.replaceAll("(?i)\\bunsplash\\s*•?\\s*", "").trim();
@@ -1616,7 +1514,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (!heroShown) return;
         heroShown = false;
         heroShelf.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
-        if (islamicShelf != null) islamicShelf.animate().alpha(0f).setDuration(reducedMotion ? 100 : 160).start();
     }
 
     /**
@@ -1944,67 +1841,27 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (shamsi) shamsiDate.setText(Shamsi.today());
     }
 
-    private void updatePrayerTimes() {
-        if (prayerTimesView != null) {
-            prayerTimesView.setText(PrayerTimes.getFormatted(this));
-        }
-        updateIslamicShelf();
-        if (screensaverActive) {
-            updateNightstandScreensaver();
-        }
-    }
-
     private void updateWeatherAqi() {
         if (weatherAirQualityView != null) {
             weatherAirQualityView.setText(WeatherAirQuality.getFormatted(this));
         }
     }
 
-    private void updateIslamicShelf() {
-        if (islamicShelf == null) return;
-        DailyAyat.Ayat ayat = DailyAyat.getToday();
-        if (ayatRef != null) ayatRef.setText(ayat.reference);
-        if (ayatArabic != null) ayatArabic.setText(ayat.arabic);
-        if (ayatTranslation != null) ayatTranslation.setText(ayat.translation);
-
-        if (prayerHeader != null) {
-            prayerHeader.setText("WAKTU SOLAT  •  " + PrayerTimes.getHijriDate().toUpperCase(Locale.ROOT));
-        }
-
-        PrayerTimes.PrayerItem[] items = PrayerTimes.getPrayerItems(this);
-        if (items != null && items.length >= 6) {
-            TextView[] labels = {lblSubuh, lblSyuruk, lblZohor, lblAsar, lblMaghrib, lblIsyak};
-            TextView[] times = {timeSubuh, timeSyuruk, timeZohor, timeAsar, timeMaghrib, timeIsyak};
-
-            for (int i = 0; i < 6; i++) {
-                if (times[i] != null) times[i].setText(items[i].timeStr);
-                if (labels[i] != null) {
-                    labels[i].setText(items[i].name);
-                    if (items[i].isNext) {
-                        labels[i].setTextColor(0xFF4ADE80);
-                        if (times[i] != null) times[i].setTextColor(0xFF4ADE80);
-                    } else {
-                        labels[i].setTextColor(0xB3FFFFFF);
-                        if (times[i] != null) times[i].setTextColor(0xFFFFFFFF);
-                    }
-                }
-            }
-        }
-    }
-
     private void updateDateAndPeriod() {
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance(java.util.TimeZone.getTimeZone(getString(R.string.time_zone)));
+        cal.setTimeInMillis(NetTime.now());
         int hour = cal.get(Calendar.HOUR_OF_DAY);
         String period;
-        if (hour >= 1 && hour < 12) period = "PG";
-        else if (hour >= 12 && hour < 19) period = "PTG";
-        else period = "MLM";
+        if (hour >= 4 && hour < 11) period = "PAGI";
+        else if (hour >= 11 && hour < 15) period = "SIANG";
+        else if (hour >= 15 && hour < 18) period = "SORE";
+        else period = "MALAM";
 
         int day = cal.get(Calendar.DAY_OF_MONTH);
         int month = cal.get(Calendar.MONTH);
         int year = cal.get(Calendar.YEAR);
-        String[] malayMonths = {"JAN", "FEB", "MAC", "APR", "MEI", "JUN", "JUL", "OGO", "SEP", "OKT", "NOV", "DIS"};
-        String mStr = (month >= 0 && month < 12) ? malayMonths[month] : "";
+        String[] months = {"JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"};
+        String mStr = (month >= 0 && month < 12) ? months[month] : "";
         String dateStr = day + " " + mStr + " " + year;
 
         if (ampmView != null) ampmView.setText(period);
@@ -2104,7 +1961,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         addSeparator(rows);
 
         // Row 2: Tetapan Wi-Fi
-        addInputRow(rows, close, R.drawable.ic_settings, "Tetapan Wi-Fi", -1, () -> {
+        addInputRow(rows, close, R.drawable.ic_settings, "Pengaturan Wi-Fi", -1, () -> {
             SoundEffects.playSelect();
             open(systemIntent(Settings.ACTION_WIFI_SETTINGS));
         });
@@ -2138,15 +1995,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         });
 
         // Row 2: Location API Haze
-        addInputRow(rows, close, R.drawable.ic_location, "Location API Haze", -1, () -> {
+        addInputRow(rows, close, R.drawable.ic_location, "Lokasi Cuaca", -1, () -> {
             SoundEffects.playSelect();
             showHazeLocationDialog();
-        });
-
-        // Row 3: Location Waktu Solat
-        addInputRow(rows, close, R.drawable.ic_mosque, "Location Waktu Solat", -1, () -> {
-            SoundEffects.playSelect();
-            showPrayerZoneDialog();
         });
 
         // Row 4: Sound Effects
@@ -2157,16 +2008,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showSoundEffectsDialog();
         });
 
-        // Row 5: Check for Updates (OTA)
-        addInputRow(rows, close, R.drawable.ic_update, "Check for Updates", -1, () -> {
-            SoundEffects.playSelect();
-            AppUpdateManager.checkForUpdates(MainActivity.this, true);
-        });
-
         addSeparator(rows);
 
         // Row 6: All Settings (Android Settings)
-        addInputRow(rows, close, R.drawable.ic_settings, "All Settings", -1, () -> {
+        addInputRow(rows, close, R.drawable.ic_settings, "Semua Pengaturan", -1, () -> {
             SoundEffects.playSelect();
             open(systemIntent(Settings.ACTION_SETTINGS));
         });
@@ -2179,10 +2024,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showSoundEffectsDialog() {
         final String[] soundOptions = new String[]{
-                "🎮 PlayStation 5 (Lalai / Default Chime)",
-                "🕹️ Nintendo Switch (Click & Snap Pop)",
-                "🟩 Xbox Series X/S (Warm Harmonic Chime)",
-                "🔇 Matikan Bunyi (Off / Muted)"
+                "🎮 PlayStation 5 (Default)",
+                "🕹️ Nintendo Switch",
+                "🟩 Xbox Series X/S",
+                "🔇 Tanpa Suara"
         };
 
         final String[] soundKeys = new String[]{
@@ -2202,7 +2047,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("🔊 Pilih Kesan Bunyi (Sound Effects)");
+        builder.setTitle("🔊 Pilih Efek Suara");
         builder.setSingleChoiceItems(soundOptions, selectedIndex, (dialog, which) -> {
             dialog.dismiss();
             String chosenKey = soundKeys[which];
@@ -2210,14 +2055,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             String displayName = SoundEffects.getThemeDisplayName(chosenKey);
 
             if (SoundEffects.THEME_OFF.equalsIgnoreCase(chosenKey)) {
-                Toast.makeText(MainActivity.this, "🔇 Kesan Bunyi Dimatikan", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "🔇 Efek suara dimatikan", Toast.LENGTH_SHORT).show();
             } else {
-                Toast.makeText(MainActivity.this, "🔊 Kesan Bunyi: " + displayName, Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "🔊 Efek suara: " + displayName, Toast.LENGTH_SHORT).show();
                 // Play sample of the selected theme
                 handler.postDelayed(() -> SoundEffects.playSelect(), 120);
             }
         });
-        builder.setNegativeButton("Tutup / Cancel", (dialog, which) -> dialog.dismiss());
+        builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
         dialog.show();
     }
@@ -2238,48 +2083,37 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         List<String> catList = new ArrayList<>();
         List<String> keyList = new ArrayList<>();
 
-        catList.add("🌿 Natural / Alam Semula Jadi");
+        catList.add("🌿 Alam");
         keyList.add("Natural");
 
-        String malaysiaLabel;
-        if (currentKey.startsWith("Malaysia_")) {
-            malaysiaLabel = "🇲🇾 Malaysia: " + getStateDisplayName(currentKey) + " (Tukar Negeri ▶)";
-        } else if ("Malaysia".equalsIgnoreCase(currentKey)) {
-            malaysiaLabel = "🇲🇾 Malaysia: Semua Negeri (Tukar Negeri ▶)";
-        } else {
-            malaysiaLabel = "🇲🇾 Malaysia / Mengikut Negeri (Pilih Negeri ▶)";
-        }
-        catList.add(malaysiaLabel);
-        keyList.add("MALAYSIA_PICKER");
-
-        catList.add("🏙️ Skyscraper / Pencakar Langit & Bandar");
+        catList.add("🏙️ Gedung & Kota");
         keyList.add("Skyscraper");
 
-        catList.add("🌌 Deep Space / Angkasa & Kosmos");
+        catList.add("🌌 Luar Angkasa");
         keyList.add("Space");
 
-        catList.add("🌊 Ocean & Coastal / Lautan & Pantai");
+        catList.add("🌊 Laut & Pantai");
         keyList.add("Ocean");
 
-        catList.add("🔲 Minimalist Dark / Minimalis Gelap");
+        catList.add("🔲 Minimalis Gelap");
         keyList.add("Minimalist");
 
         if (hasCustom) {
             boolean isSingle = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getBoolean("custom_single_mode", false);
             String customLabel = isSingle
-                    ? "📱 Custom / 1 Gambar Kekal (" + customFiles.length + " foto)"
-                    : "📱 Custom / Putar Semua Gambar (" + customFiles.length + " foto)";
+                    ? "📱 Foto Sendiri / 1 Foto Tetap (" + customFiles.length + " foto)"
+                    : "📱 Foto Sendiri / Putar Semua (" + customFiles.length + " foto)";
             catList.add(customLabel);
             keyList.add("Custom");
 
-            catList.add("🗑️ Urus Gambar Dimuat Naik (Pilih / Padam)");
+            catList.add("🗑️ Kelola Foto yang Diunggah");
             keyList.add("MANAGE_CUSTOM");
         }
 
-        catList.add("📲 Upload Wallpaper via Phone (QR Code)");
+        catList.add("📲 Unggah Wallpaper dari HP (QR)");
         keyList.add("UPLOAD_QR");
 
-        catList.add("🔀 Tukar Gambar Seterusnya (Next)");
+        catList.add("🔀 Gambar Berikutnya");
         keyList.add("NEXT");
 
         final String[] categories = catList.toArray(new String[0]);
@@ -2287,7 +2121,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         int selectedIndex = 0;
         for (int i = 0; i < keys.length; i++) {
-            if (keys[i].equalsIgnoreCase(currentKey) || ("MALAYSIA_PICKER".equals(keys[i]) && currentKey.startsWith("Malaysia"))) {
+            if (keys[i].equalsIgnoreCase(currentKey)) {
                 selectedIndex = i;
                 break;
             }
@@ -2301,10 +2135,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if ("NEXT".equals(chosenKey)) {
                 if (wallpapers != null && !wallpapers.isEmpty()) {
                     showNextWallpaper(true);
-                    Toast.makeText(MainActivity.this, "Menukar ke gambar seterusnya...", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Ganti ke gambar berikutnya...", Toast.LENGTH_SHORT).show();
                 }
-            } else if ("MALAYSIA_PICKER".equals(chosenKey)) {
-                showMalaysiaStateSelectorDialog();
             } else if ("UPLOAD_QR".equals(chosenKey)) {
                 showWallpaperUploadQrDialog();
             } else if ("MANAGE_CUSTOM".equals(chosenKey)) {
@@ -2313,95 +2145,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 switchWallpaperCategory(chosenKey);
             }
         });
-        builder.setNegativeButton("Tutup / Cancel", (dialog, which) -> dialog.dismiss());
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    private String getStateDisplayName(String key) {
-        if (key == null) return "Semua Negeri";
-        if (key.equalsIgnoreCase("Malaysia_Johor")) return "Johor";
-        if (key.equalsIgnoreCase("Malaysia_Kedah")) return "Kedah";
-        if (key.equalsIgnoreCase("Malaysia_Kelantan")) return "Kelantan";
-        if (key.equalsIgnoreCase("Malaysia_Melaka")) return "Melaka";
-        if (key.equalsIgnoreCase("Malaysia_NegeriSembilan")) return "Negeri Sembilan";
-        if (key.equalsIgnoreCase("Malaysia_Pahang")) return "Pahang";
-        if (key.equalsIgnoreCase("Malaysia_Perak")) return "Perak";
-        if (key.equalsIgnoreCase("Malaysia_Perlis")) return "Perlis";
-        if (key.equalsIgnoreCase("Malaysia_PulauPinang")) return "Pulau Pinang";
-        if (key.equalsIgnoreCase("Malaysia_Sabah")) return "Sabah";
-        if (key.equalsIgnoreCase("Malaysia_Sarawak")) return "Sarawak";
-        if (key.equalsIgnoreCase("Malaysia_Selangor")) return "Selangor";
-        if (key.equalsIgnoreCase("Malaysia_Terengganu")) return "Terengganu";
-        if (key.equalsIgnoreCase("Malaysia_WP")) return "Wilayah Persekutuan";
-        return "Semua Negeri";
-    }
-
-    private void showMalaysiaStateSelectorDialog() {
-        final String[] stateLabels = new String[]{
-                "🇲🇾 Semua Negeri di Malaysia (Putar Keseluruhan)",
-                "📍 Johor — Pulau Rawa & Pesisir Pantai",
-                "📍 Kedah — Langkawi Sky Bridge & Sawah Padi",
-                "📍 Kelantan — Pantai Cahaya Bulan & Senok",
-                "📍 Melaka — Bandaraya Bersejarah & Sungai Melaka",
-                "📍 Negeri Sembilan — Pantai Port Dickson & Teluk Kemang",
-                "📍 Pahang — Ladang Teh Cameron Highlands",
-                "📍 Perak — Pekan Warisan Ipoh & Kellie's Castle",
-                "📍 Perlis — Gua Kelam & Banjaran Nakawan",
-                "📍 Pulau Pinang — Georgetown UNESCO & Kek Lok Si",
-                "📍 Sabah — Puncak Gunung Kinabalu",
-                "📍 Sarawak — Pinnacles Mulu & Kuching Waterfront",
-                "📍 Selangor — Batu Caves & Masjid Negeri Shah Alam",
-                "📍 Terengganu — Pulau Perhentian & Masjid Kristal",
-                "📍 Wilayah Persekutuan — Menara Berkembar KLCC"
-        };
-
-        final String[] stateKeys = new String[]{
-                "Malaysia",
-                "Malaysia_Johor",
-                "Malaysia_Kedah",
-                "Malaysia_Kelantan",
-                "Malaysia_Melaka",
-                "Malaysia_NegeriSembilan",
-                "Malaysia_Pahang",
-                "Malaysia_Perak",
-                "Malaysia_Perlis",
-                "Malaysia_PulauPinang",
-                "Malaysia_Sabah",
-                "Malaysia_Sarawak",
-                "Malaysia_Selangor",
-                "Malaysia_Terengganu",
-                "Malaysia_WP"
-        };
-
-        String currentCat = getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).getString("active_category", "Natural");
-        int selectedIndex = 0;
-        for (int i = 0; i < stateKeys.length; i++) {
-            if (stateKeys[i].equalsIgnoreCase(currentCat)) {
-                selectedIndex = i;
-                break;
-            }
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("🇲🇾 Koleksi Malaysia — Pilih Negeri");
-        builder.setSingleChoiceItems(stateLabels, selectedIndex, (dialog, which) -> {
-            dialog.dismiss();
-            String chosenKey = stateKeys[which];
-            switchWallpaperCategory(chosenKey);
-        });
-        builder.setNegativeButton("Kembali / Back", (dialog, which) -> {
-            dialog.dismiss();
-            showWallpaperDialog();
-        });
+        builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
         dialog.show();
     }
 
     private void switchWallpaperCategory(String category) {
         getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit().putString("active_category", category).apply();
-        String displayLabel = category.startsWith("Malaysia_") ? ("Malaysia (" + getStateDisplayName(category) + ")") : category;
-        Toast.makeText(this, "Kategori: " + displayLabel, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, "Kategori: " + category, Toast.LENGTH_SHORT).show();
 
         if ("Natural".equalsIgnoreCase(category)) {
             placesMode = true;
@@ -2450,7 +2201,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             wallpapers = matching;
             showNextWallpaper(true);
         } else {
-            Toast.makeText(this, "Memuat turun 4K Wallpaper " + displayLabel + "...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Mengunduh wallpaper 4K " + category + "...", Toast.LENGTH_SHORT).show();
             new Thread(() -> {
                 boolean downloaded = OnlineWallpapers.syncCategory(getApplicationContext(), category);
                 handler.post(() -> {
@@ -2483,7 +2234,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         if (!started) {
-            Toast.makeText(this, "Ralat: Tidak dapat memulakan pelayan muat naik tempatan.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Gagal: server unggah lokal tidak bisa dijalankan.", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -2500,7 +2251,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Title
         TextView title = new TextView(this);
-        title.setText("📲 Muat Naik Wallpaper Dari Telefon");
+        title.setText("📲 Unggah Wallpaper dari HP");
         title.setTextColor(0xFFFFFFFF);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19);
         title.setTypeface(Typeface.DEFAULT_BOLD);
@@ -2509,7 +2260,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Subtitle instructions
         TextView sub = new TextView(this);
-        sub.setText("Sambungkan telefon pada Wi-Fi yang sama, kemudian imbas kod QR di bawah:");
+        sub.setText("Sambungkan HP ke Wi-Fi yang sama, lalu pindai kode QR di bawah:");
         sub.setTextColor(0xFF94A3B8);
         sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
         sub.setGravity(Gravity.CENTER);
@@ -2549,7 +2300,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Status text
         qrStatusText = new TextView(this);
-        qrStatusText.setText("📡 Menunggu imbasan kamera atau fail dari telefon...");
+        qrStatusText.setText("📡 Menunggu foto dari HP...");
         qrStatusText.setTextColor(0xFFCBD5E1);
         qrStatusText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         qrStatusText.setGravity(Gravity.CENTER);
@@ -2558,7 +2309,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
         // Close button
         Button btnClose = new Button(this);
-        btnClose.setText("Tutup / Cancel");
+        btnClose.setText("Tutup");
         btnClose.setTextColor(0xFFFFFFFF);
         btnClose.setBackgroundResource(R.drawable.pill_bg);
         btnClose.setFocusable(true);
@@ -2629,7 +2380,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private void onCustomWallpaperUploaded(File file) {
         runOnUiThread(() -> {
             SoundEffects.playSelect();
-            Toast.makeText(this, "✅ Wallpaper berjaya dimuat naik dari telefon!", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "✅ Wallpaper berhasil diunggah dari HP!", Toast.LENGTH_LONG).show();
 
             getSharedPreferences("wallpaper_prefs", MODE_PRIVATE).edit()
                     .putString("active_category", "Custom")
@@ -2656,11 +2407,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showNextWallpaper(true);
 
             if (qrStatusText != null) {
-                qrStatusText.setText("🎉 Berjaya Diterima & Dipaparkan di TV!");
+                qrStatusText.setText("🎉 Diterima & tampil di TV!");
                 qrStatusText.setTextColor(0xFF4ADE80);
             }
             if (qrUrlText != null) {
-                qrUrlText.setText("✅ Wallpaper Aktif: " + file.getName());
+                qrUrlText.setText("✅ Wallpaper aktif: " + file.getName());
                 qrUrlText.setTextColor(0xFF4ADE80);
             }
             if (qrImageView != null) {
@@ -2699,7 +2450,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             wallpapers = Collections.singletonList(file);
             getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
             showNextWallpaper(true);
-            Toast.makeText(this, "📌 Kunci 1 Wallpaper: " + file.getName(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "📌 Wallpaper dikunci: " + file.getName(), Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -2726,7 +2477,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 wallpapers = new ArrayList<>(Arrays.asList(files));
                 getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
                 showNextWallpaper(true);
-                Toast.makeText(this, "🔄 Mod Putar Semua Wallpaper Aktif (" + files.length + " foto)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "🔄 Mode putar semua wallpaper aktif (" + files.length + " foto)", Toast.LENGTH_SHORT).show();
             } else {
                 switchWallpaperCategory("Natural");
             }
@@ -2753,13 +2504,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     wallpapers = new ArrayList<>(Arrays.asList(files));
                     getSharedPreferences("wallpaper", MODE_PRIVATE).edit().putInt("index", -1).apply();
                     showNextWallpaper(true);
-                    Toast.makeText(this, "🗑️ Gambar dipadam. Tinggal " + files.length + " foto.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "🗑️ Foto dihapus. Sisa " + files.length + " foto.", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(this, "Semua gambar telah dipadam. Beralih ke Natural.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Semua foto sudah dihapus. Kembali ke Alam.", Toast.LENGTH_SHORT).show();
                     switchWallpaperCategory("Natural");
                 }
             } else {
-                Toast.makeText(this, "🗑️ Gambar dipadam dari simpanan.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "🗑️ Foto dihapus dari penyimpanan.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -2775,7 +2526,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if ("Custom".equalsIgnoreCase(activeCat)) {
                 switchWallpaperCategory("Natural");
             }
-            Toast.makeText(this, "🧹 Semua gambar muat naik telah dibersihkan.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "🧹 Semua foto unggahan sudah dihapus.", Toast.LENGTH_SHORT).show();
         });
     }
 
@@ -2783,7 +2534,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         File customDir = new File(getFilesDir(), "custom_wallpapers");
         File[] files = customDir.listFiles((dir, name) -> name.endsWith(".jpg") || name.endsWith(".png") || name.endsWith(".jpeg"));
         if (files == null || files.length == 0) {
-            Toast.makeText(this, "Tiada gambar dimuat naik dijumpai.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Belum ada foto yang diunggah.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -2796,15 +2547,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         List<Runnable> actions = new ArrayList<>();
 
         // Quick Mode Actions at top
-        items.add("🔄 Putar Semua Gambar (Slideshow Mod)");
+        items.add("🔄 Putar Semua Foto (Slideshow)");
         actions.add(this::onCustomWallpaperSlideshow);
 
-        items.add("🗑️ Padam Semua Gambar (Kosongkan)");
+        items.add("🗑️ Hapus Semua Foto");
         actions.add(() -> {
             new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle("⚠️ Padam Semua Gambar?")
-                    .setMessage("Adakah anda pasti ingin memadam semua " + files.length + " gambar yang dimuat naik?")
-                    .setPositiveButton("Ya, Padam Semua", (d, w) -> {
+                    .setTitle("⚠️ Hapus Semua Foto?")
+                    .setMessage("Yakin mau menghapus semua " + files.length + " foto yang diunggah?")
+                    .setPositiveButton("Ya, Hapus Semua", (d, w) -> {
                         for (File f : files) f.delete();
                         onCustomWallpaperCleared();
                     })
@@ -2817,13 +2568,13 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             double kb = f.length() / 1024.0;
             String sizeStr = kb > 1024 ? String.format(Locale.ROOT, "%.1f MB", kb / 1024.0) : String.format(Locale.ROOT, "%.0f KB", kb);
             boolean isCurrent = isSingleMode && f.getName().equals(singleFile);
-            String prefix = isCurrent ? "📌 [Kekal] " : "🖼️ ";
+            String prefix = isCurrent ? "📌 [Tetap] " : "🖼️ ";
             items.add(prefix + f.getName() + " (" + sizeStr + " • " + sdf.format(new Date(f.lastModified())) + ")");
             actions.add(() -> showSingleCustomActionDialog(f));
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("📱 Pengurus Gambar TV (" + files.length + " Foto)");
+        builder.setTitle("📱 Kelola Foto TV (" + files.length + " Foto)");
         builder.setItems(items.toArray(new String[0]), (dialog, which) -> {
             if (which >= 0 && which < actions.size()) {
                 actions.get(which).run();
@@ -2835,9 +2586,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void showSingleCustomActionDialog(File file) {
         String[] actions = {
-                "📌 Jadikan Wallpaper Tunggal (Kunci Gambar Ini)",
-                "🗑️ Padam Gambar Ini",
-                "🧹 Simpan Gambar Ini Sahaja & Padam Yang Lain",
+                "📌 Jadikan Wallpaper Tetap",
+                "🗑️ Hapus Foto Ini",
+                "🧹 Simpan Foto Ini Saja & Hapus yang Lain",
                 "⬅️ Kembali"
         };
 
@@ -2863,7 +2614,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                         }
                     }
                     onCustomWallpaperSelected(file);
-                    Toast.makeText(this, "🧹 Gambar lain dipadam. Gambar ini dikekalkan.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "🧹 Foto lain dihapus. Foto ini disimpan.", Toast.LENGTH_SHORT).show();
                     break;
                 case 3: // Back
                     showCustomWallpaperManagerDialog();
@@ -2881,112 +2632,24 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         CharSequence[] items = new CharSequence[stations.size()];
         for (int i = 0; i < stations.size(); i++) {
             AppLocationManager.Station s = stations.get(i);
-            items[i] = s.getDisplayName() + "\n" + s.place;
+            items[i] = s.getDisplayName();
             if (s.id.equalsIgnoreCase(currentId)) {
                 selectedIndex = i;
             }
         }
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("📍 Pilih Stesen Jerebu JAS / APIMS");
+        builder.setTitle("📍 Pilih Kota");
         builder.setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
             AppLocationManager.Station chosen = stations.get(which);
             AppLocationManager.setStation(MainActivity.this, chosen);
             dialog.dismiss();
-            Toast.makeText(MainActivity.this, "Stesen Jerebu: " + chosen.name, Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "Lokasi: " + chosen.name, Toast.LENGTH_SHORT).show();
             refreshLocationDependentData();
         });
-        builder.setNegativeButton("Tutup / Cancel", (dialog, which) -> dialog.dismiss());
+        builder.setNegativeButton("Tutup", (dialog, which) -> dialog.dismiss());
         AlertDialog dialog = builder.create();
         dialog.show();
-    }
-
-    private void showPrayerZoneDialog() {
-        final List<PrayerTimes.PrayerZone> zones = PrayerTimes.getPresetZones();
-        String activeZone = PrayerTimes.getActiveZone(this);
-        int selectedIndex = 0;
-        CharSequence[] items = new CharSequence[zones.size()];
-        for (int i = 0; i < zones.size(); i++) {
-            PrayerTimes.PrayerZone z = zones.get(i);
-            items[i] = z.getDisplayName();
-            if (z.code.equalsIgnoreCase(activeZone)) {
-                selectedIndex = i;
-            }
-        }
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert);
-        builder.setTitle("🕌 Pilih Zon Waktu Solat JAKIM");
-        builder.setSingleChoiceItems(items, selectedIndex, (dialog, which) -> {
-            PrayerTimes.PrayerZone chosen = zones.get(which);
-            PrayerTimes.setPrayerZone(MainActivity.this, chosen);
-            dialog.dismiss();
-            Toast.makeText(MainActivity.this, "Zon Solat: " + chosen.name, Toast.LENGTH_SHORT).show();
-            refreshLocationDependentData();
-        });
-        builder.setNegativeButton("Tutup / Cancel", (dialog, which) -> dialog.dismiss());
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-
-    /** Shows an Apple TV-style frosted glass Putrajaya prayer timetable popup. */
-    private void showPrayerPopup() {
-        if (openMenu != null) return;
-        SoundEffects.playSelect();
-        View anchor = prayerTimesView != null ? prayerTimesView : findViewById(R.id.leftBlock);
-        FrameLayout panel = (FrameLayout) getLayoutInflater().inflate(R.layout.popup_inputs, root, false);
-        LinearLayout rows = panel.findViewById(R.id.rows);
-        Runnable close = () -> closeMenu(false);
-
-        // Header: Active Prayer Zone
-        addInputRow(rows, close, R.drawable.ic_settings, "Waktu Solat " + PrayerTimes.getShortZoneName(this), TvInputManager.INPUT_STATE_CONNECTED, () -> {});
-
-        // Date row: Islamic Hijri
-        addInputRow(rows, close, R.drawable.ic_input, PrayerTimes.getHijriDate(), -1, () -> {});
-
-        addSeparator(rows);
-
-        // Prayer times list
-        java.util.List<PrayerTimes.ScheduleItem> schedule = PrayerTimes.getFullSchedule(this);
-        for (PrayerTimes.ScheduleItem item : schedule) {
-            addPrayerRow(rows, close, item.name, item.timeFormatted, item.isNext);
-        }
-
-        addSeparator(rows);
-
-        // Tutup
-        addInputRow(rows, close, R.drawable.ic_move, "Tutup", -1, () -> {
-            SoundEffects.playSelect();
-            closeMenu(true);
-        });
-
-        int width = (int) (270 * density);
-        panel.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        width = Math.max(width, panel.getMeasuredWidth());
-
-        showMenu(panel, rows, anchor, width, false);
-    }
-
-    private void addPrayerRow(LinearLayout rows, Runnable close, String name, String time, boolean isNext) {
-        View row = getLayoutInflater().inflate(R.layout.item_input, rows, false);
-        ((ImageView) row.findViewById(R.id.icon)).setImageResource(R.drawable.ic_input);
-        TextView title = row.findViewById(R.id.title);
-        title.setText(name + (isNext ? " (Seterusnya)" : ""));
-        TextView status = row.findViewById(R.id.status);
-        View dot = row.findViewById(R.id.dot);
-        status.setText(time);
-        status.setVisibility(View.VISIBLE);
-        if (isNext) {
-            dot.setVisibility(View.VISIBLE);
-            title.setTypeface(null, android.graphics.Typeface.BOLD);
-            status.setTypeface(null, android.graphics.Typeface.BOLD);
-        } else {
-            dot.setVisibility(View.GONE);
-        }
-        row.setOnClickListener(v -> {
-            SoundEffects.playSelect();
-            close.run();
-        });
-        rows.addView(row);
     }
 
     private void checkInactivity() {
@@ -3024,12 +2687,6 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     private void updateNightstandScreensaver() {
         if (screensaverView == null) return;
-        TextView hijri = screensaverView.findViewById(R.id.nightstandHijri);
-        if (hijri != null) hijri.setText("🌙 " + PrayerTimes.getHijriDate());
-
-        TextView prayer = screensaverView.findViewById(R.id.nightstandPrayer);
-        if (prayer != null) prayer.setText("🕌 " + PrayerTimes.getNextPrayerSummary(this));
-
         // Center locked strictly with no movement
         View content = screensaverView.findViewById(R.id.nightstandContent);
         if (content != null) {
@@ -3039,7 +2696,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
 
         // iPhone StandBy Wind Down Mode: 10:00 PM (22:00) to 6:00 AM (06:00) -> Red Monochrome
-        java.util.Calendar cal = java.util.Calendar.getInstance();
+        java.util.Calendar cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone(getString(R.string.time_zone)));
+        cal.setTimeInMillis(NetTime.now());
         int hour = cal.get(java.util.Calendar.HOUR_OF_DAY);
         boolean isNightMode = (hour >= 22 || hour < 6);
 
@@ -3053,26 +2711,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (clock != null) clock.setTextColor(red);
             if (ampm != null) ampm.setTextColor(0xCCFF453A);
             if (date != null) date.setTextColor(0xE6FF453A);
-            if (hijri != null) hijri.setTextColor(0xE6FF453A);
-            if (prayer != null) {
-                prayer.setTextColor(red);
-                android.graphics.drawable.GradientDrawable redPill = new android.graphics.drawable.GradientDrawable();
-                redPill.setShape(android.graphics.drawable.GradientDrawable.RECTANGLE);
-                redPill.setColor(0x26FF453A);
-                redPill.setStroke((int) (1 * density), 0x59FF453A);
-                redPill.setCornerRadius(21 * density);
-                prayer.setBackground(redPill);
-            }
             if (hint != null) hint.setTextColor(0x55FF453A);
         } else {
             if (clock != null) clock.setTextColor(0xFFFFFFFF);
             if (ampm != null) ampm.setTextColor(0xB3FFFFFF);
             if (date != null) date.setTextColor(0xE6FFFFFF);
-            if (hijri != null) hijri.setTextColor(0xD9E6E0D2);
-            if (prayer != null) {
-                prayer.setTextColor(0xFFFFFFFF);
-                prayer.setBackgroundResource(R.drawable.pill_bg);
-            }
             if (hint != null) hint.setTextColor(0x4DFFFFFF);
         }
     }
@@ -3110,7 +2753,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 // 2 hours after screensaver -> TV off (10m + 2h = 7,800,000 ms)
                 android.provider.Settings.Secure.putInt(cr, "sleep_timeout", 7800000);
                 android.provider.Settings.Secure.putInt(cr, "screensaver_enabled", 1);
-                android.provider.Settings.Secure.putString(cr, "screensaver_components", "com.gathin.tvhome/.ClockDream");
+                android.provider.Settings.Secure.putString(cr, "screensaver_components", getPackageName() + "/" + ClockDream.class.getName());
             } catch (Exception ignored) {
             }
         }, "system-timeout-sync").start();

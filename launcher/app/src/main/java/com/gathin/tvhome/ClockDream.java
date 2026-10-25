@@ -11,10 +11,8 @@ import android.util.TypedValue;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.TextClock;
 import android.widget.TextView;
 
-import java.util.Locale;
 import java.util.Random;
 
 /**
@@ -68,9 +66,9 @@ public class ClockDream extends DreamService {
         face = new ClockFace(this);
         ((ViewGroup) content).addView(face, 0, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        TextClock date = findViewById(R.id.dreamDate);
+        NetClock date = findViewById(R.id.dreamDate);
         // The month in short and the year (in capitals, see dream_clock.xml): OCT 21, 2026.
-        String pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "MMMdyyyy");
+        String pattern = DateFormat.getBestDateTimePattern(NetClock.ID, "MMMdyyyy");
         date.setFormat12Hour(pattern);
         date.setFormat24Hour(pattern);
         View screen = (View) content.getParent();

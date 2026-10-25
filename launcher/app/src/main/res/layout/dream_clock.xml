@@ -21,7 +21,8 @@
             android:orientation="horizontal"
             android:baselineAligned="false">
 
-            <TextClock
+            <com.gathin.tvhome.NetClock
+                android:timeZone="@string/time_zone"
                 android:id="@+id/dreamTime"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -33,7 +34,8 @@
                 android:includeFontPadding="false" />
 
             <!-- Top-aligned to the digits: ClockDream lines up the tops of the letters. -->
-            <TextClock
+            <com.gathin.tvhome.NetClock
+                android:timeZone="@string/time_zone"
                 android:id="@+id/dreamAmPm"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -46,7 +48,8 @@
                 android:textAllCaps="true" />
         </LinearLayout>
 
-        <TextClock
+        <com.gathin.tvhome.NetClock
+            android:timeZone="@string/time_zone"
             android:id="@+id/dreamDate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

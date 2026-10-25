@@ -10,7 +10,7 @@ import android.widget.Toast;
 
 /**
  * Handles location configuration broadcasts (e.g. from AI assistant scripts or adb):
- * adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --es query "Putrajaya"
+ * adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --es query "Jakarta"
  * adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --es station_id "CA17W"
  * adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --ef lat 2.9158 --ef lon 101.6909
  */
@@ -50,15 +50,13 @@ public class LocationBroadcastReceiver extends BroadcastReceiver {
         }
 
         if (matched != null) {
-            PrayerTimes.clearManualZone(context);
             AppLocationManager.setStation(context, matched);
             final String name = matched.getDisplayName();
             new Handler(Looper.getMainLooper()).post(() -> {
                 Toast.makeText(context, "📍 Lokasi TV: " + name, Toast.LENGTH_LONG).show();
             });
         } else if (lat != 0.0 && lon != 0.0) {
-            PrayerTimes.clearManualZone(context);
-            String customName = query != null ? query : "Lokasi Tersuai";
+            String customName = query != null ? query : "Lokasi Kustom";
             AppLocationManager.setCustomLocation(context, "CUSTOM", customName, customName, lat, lon);
             new Handler(Looper.getMainLooper()).post(() -> {
                 Toast.makeText(context, "📍 Lokasi TV: " + customName, Toast.LENGTH_LONG).show();

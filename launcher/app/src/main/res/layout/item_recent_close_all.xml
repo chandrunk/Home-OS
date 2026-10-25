@@ -46,7 +46,7 @@
                     android:layout_width="38dp"
                     android:layout_height="38dp"
                     android:layout_gravity="center"
-                    android:contentDescription="Close All"
+                    android:contentDescription="Tutup Semua"
                     android:src="@drawable/ic_trash" />
             </FrameLayout>
 
@@ -57,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:fontFamily="@font/outfit"
-                android:text="Close All"
+                android:text="Tutup Semua"
                 android:textColor="#FFFFFFFF"
                 android:textSize="14sp"
                 android:textStyle="bold" />

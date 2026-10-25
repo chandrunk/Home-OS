@@ -177,7 +177,7 @@ public class RecentAppsActivity extends Activity implements RecentAppsAdapter.On
                 startActivity(item.launchIntent);
                 finish();
             } catch (ActivityNotFoundException e) {
-                Toast.makeText(this, "Cannot open app", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Aplikasi tidak bisa dibuka", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -215,7 +215,7 @@ public class RecentAppsActivity extends Activity implements RecentAppsAdapter.On
                     adapter.clearAll();
                     updateRamStats();
                     showEmptyState();
-                    Toast.makeText(this, "RAM cleared! All apps closed", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "RAM dibersihkan! Semua aplikasi ditutup", Toast.LENGTH_SHORT).show();
                     new Handler(Looper.getMainLooper()).postDelayed(this::finish, 650);
                 })
                 .start();

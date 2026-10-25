@@ -63,7 +63,7 @@ public class RecentAppsManager {
 
             double usedGb = usedBytes / (1024.0 * 1024.0 * 1024.0);
             double totalGb = totalBytes / (1024.0 * 1024.0 * 1024.0);
-            this.formattedText = String.format(Locale.US, "RAM %.1f GB used of %.1f GB", usedGb, totalGb);
+            this.formattedText = String.format(Locale.US, "RAM %.1f GB terpakai dari %.1f GB", usedGb, totalGb);
         }
     }
 

@@ -51,7 +51,7 @@
                             android:id="@+id/weatherLocation"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="PUTRAJAYA"
+                            android:text="JAKARTA"
                             android:textColor="#94A3B8"
                             android:textSize="13sp"
                             android:fontFamily="@font/outfit"
@@ -71,7 +71,7 @@
                             android:focusableInTouchMode="true"
                             android:fontFamily="@font/outfit"
                             android:fontVariationSettings="'wght' 600"
-                            android:text="📍 Tukar Stesen / Change"
+                            android:text="📍 Ganti Kota"
                             android:textColor="#CBD5E1"
                             android:textSize="11sp" />
                     </LinearLayout>
@@ -176,7 +176,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="AIR QUALITY"
+                        android:text="KUALITAS UDARA"
                         android:textColor="#94A3B8"
                         android:textSize="11sp"
                         android:fontFamily="@font/outfit"
@@ -302,7 +302,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp"
-                android:text="NEXT 12 HOURS"
+                android:text="12 JAM KE DEPAN"
                 android:textColor="#94A3B8"
                 android:textSize="12sp"
                 android:fontFamily="@font/outfit"

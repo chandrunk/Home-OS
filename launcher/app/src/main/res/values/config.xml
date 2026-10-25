@@ -80,4 +80,7 @@
          tiles that zoom without overshoot, shorter fades and no tile entrance when Home comes back. Set it
          here or with "reduced_motion": true in a theme's config.json; false keeps the normal motion. -->
     <bool name="reduced_motion">false</bool>
+    <!-- Clocks on Home and the screensavers always show this zone. TCL firmware resets the system zone to
+         GMT from the broadcast TOT whenever the tuner is on, so the system zone can't be trusted. -->
+    <string name="time_zone" translatable="false">Asia/Jakarta</string>
 </resources>

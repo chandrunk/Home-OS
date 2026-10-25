@@ -29,7 +29,7 @@ final class ClockFace extends View {
 
     private final Paint hands = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
-    private final Calendar now = Calendar.getInstance();
+    private final Calendar now;
     private final ValueAnimator ease = ValueAnimator.ofFloat(0f, 1f);
     private Bitmap dial;
     /** Design units to pixels. */
@@ -44,7 +44,7 @@ final class ClockFace extends View {
         @Override
         public void run() {
             if (!running) return;
-            now.setTimeInMillis(System.currentTimeMillis());
+            now.setTimeInMillis(NetTime.now());
             float target = now.get(Calendar.SECOND) * 6f;
             // Always forward: 354° to 0° is one more step, not a turn back.
             float from = secondAngle % 360f;
@@ -52,12 +52,13 @@ final class ClockFace extends View {
             secondFrom = from;
             secondTo = target;
             ease.start();
-            postDelayed(this, 1000 - System.currentTimeMillis() % 1000);
+            postDelayed(this, 1000 - NetTime.now() % 1000);
         }
     };
 
     ClockFace(Context context) {
         super(context);
+        now = Calendar.getInstance(java.util.TimeZone.getTimeZone(context.getString(R.string.time_zone)));
         hands.setStrokeCap(Paint.Cap.ROUND);
         hands.setStyle(Paint.Style.STROKE);
         ease.setDuration(180);
@@ -86,10 +87,10 @@ final class ClockFace extends View {
     void start() {
         if (running) return;
         running = true;
-        now.setTimeInMillis(System.currentTimeMillis());
+        now.setTimeInMillis(NetTime.now());
         secondAngle = now.get(Calendar.SECOND) * 6f;
         invalidate();
-        postDelayed(tick, 1000 - System.currentTimeMillis() % 1000);
+        postDelayed(tick, 1000 - NetTime.now() % 1000);
     }
 
     void stop() {
@@ -117,7 +118,7 @@ final class ClockFace extends View {
         canvas.drawBitmap(dial, 0f, 0f, bitmapPaint);
 
         float c = getWidth() / 2f;
-        now.setTimeInMillis(System.currentTimeMillis());
+        now.setTimeInMillis(NetTime.now());
         float minute = now.get(Calendar.MINUTE) + now.get(Calendar.SECOND) / 60f;
         float hour = now.get(Calendar.HOUR) + minute / 60f;
         hands.setColor(HAND);

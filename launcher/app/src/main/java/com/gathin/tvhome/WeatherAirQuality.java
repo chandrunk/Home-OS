@@ -26,10 +26,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Live weather and air pollutant index (API / IPU) for Malaysia.
- * Fetches official ground-station Air Pollutant Index from Jabatan Alam Sekitar (JAS) Malaysia MyEQMS/APIMS,
- * paired with detailed 7-day and hourly weather forecasts from Open-Meteo.
- * Supports Putrajaya and all official monitoring stations across Malaysia.
+ * Live weather and air quality (US AQI, PM2.5, PM10) for the chosen Indonesian city, both from Open-Meteo:
+ * no key, works anywhere. Labels are Indonesian.
  */
 final class WeatherAirQuality {
     private static final String TAG = "TvHome.Weather";
@@ -39,12 +37,10 @@ final class WeatherAirQuality {
     private static final String KEY_TEMP = "temp";
     private static final String KEY_CODE = "weather_code";
     private static final String KEY_AQI = "aqi";
-    private static final String KEY_AQI_STATUS = "aqi_status";
-    private static final String KEY_AQI_PARAM = "aqi_param";
-    private static final String KEY_AQI_STATION_PLACE = "aqi_place";
-    private static final String KEY_AQI_DATETIME = "aqi_datetime";
-    private static final String KEY_AQI_IS_JAS = "aqi_is_jas";
+    private static final String KEY_PM25 = "pm25";
+    private static final String KEY_PM10 = "pm10";
     private static final String KEY_LAST_UPDATE = "last_update";
+    private static final Locale ID = new Locale("in", "ID");
     private static final long REFRESH_INTERVAL_MS = 30L * 60 * 1000; // 30 minutes
 
     static class HourlyItem {
@@ -81,7 +77,6 @@ final class WeatherAirQuality {
         final String location;
         final String stationId;
         final String stationPlace;
-        final boolean isJasSource;
         final int temp;
         final int apparentTemp;
         final String condition;
@@ -104,7 +99,7 @@ final class WeatherAirQuality {
         final List<HourlyItem> hourly;
         final List<DailyItem> daily;
 
-        FullWeather(String location, String stationId, String stationPlace, boolean isJasSource,
+        FullWeather(String location, String stationId, String stationPlace,
                     int temp, int apparentTemp, String condition, String icon,
                     int highTemp, int lowTemp, int humidity, int windSpeed, int uvIndex,
                     int rainChanceToday, String sunrise, String sunset, int aqi,
@@ -113,7 +108,6 @@ final class WeatherAirQuality {
             this.location = location;
             this.stationId = stationId;
             this.stationPlace = stationPlace;
-            this.isJasSource = isJasSource;
             this.temp = temp;
             this.apparentTemp = apparentTemp;
             this.condition = condition;
@@ -168,7 +162,7 @@ final class WeatherAirQuality {
 
                 // 1. Fetch Complete Weather Forecast (Open-Meteo)
                 String weatherUrl = String.format(Locale.ROOT,
-                        "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max&timezone=Asia%%2FKuala_Lumpur&forecast_days=7",
+                        "https://api.open-meteo.com/v1/forecast?latitude=%.4f&longitude=%.4f&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=7",
                         lat, lon);
                 JSONObject wJson = fetchJson(weatherUrl);
 
@@ -180,66 +174,32 @@ final class WeatherAirQuality {
                     code = curr.optInt("weather_code", 2);
                 }
 
-                // 2. Fetch Official Air Quality from Jabatan Alam Sekitar Malaysia (APIMS)
-                String jasUrl = "https://eqms.doe.gov.my/api3/publicportalapims/currentapicurrentlocation?stationid=" + stationId;
-                JSONObject jasJson = fetchJson(jasUrl);
-
-                boolean isMalay = Locale.getDefault().getLanguage().startsWith("ms");
+                // 2. Air quality (Open-Meteo, US AQI scale)
                 int aqi = 50;
-                String aqiStatus = "Moderate";
-                String aqiParam = "PM2.5";
-                String aqiPlace = defaultPlace;
-                String aqiDateTime = "";
-                boolean isJas = false;
-
-                if (jasJson != null && jasJson.has("data")) {
-                    JSONArray arr = jasJson.optJSONArray("data");
-                    if (arr != null && arr.length() > 0) {
-                        JSONObject st = arr.getJSONObject(0);
-                        aqi = st.optInt("API", 50);
-                        aqiStatus = st.optString("CLASS", getAqiStatus(aqi, isMalay));
-                        aqiParam = st.optString("PARAM_SELECTED", "PM2.5");
-                        aqiPlace = st.optString("PLACE", defaultPlace);
-                        aqiDateTime = st.optString("DATETIME", "");
-                        isJas = true;
-                        Log.i(TAG, "Official JAS Malaysia APIMS sync successful for " + stationId + ": IPU=" + aqi + " (" + aqiStatus + ")");
-                    }
-                }
-
-                // Fallback to Open-Meteo Air Quality if JAS Malaysia endpoint is temporarily down
-                JSONObject fallbackAqiJson = null;
-                if (!isJas) {
-                    Log.w(TAG, "JAS Malaysia unreachable, falling back to Open-Meteo Air Quality");
-                    String aqiUrl = String.format(Locale.ROOT,
-                            "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.4f&longitude=%.4f&current=pm2_5,pm10,us_aqi",
-                            lat, lon);
-                    fallbackAqiJson = fetchJson(aqiUrl);
-                    if (fallbackAqiJson != null && fallbackAqiJson.has("current")) {
-                        JSONObject curr = fallbackAqiJson.getJSONObject("current");
-                        aqi = curr.optInt("us_aqi", 50);
-                        double pm25 = curr.optDouble("pm2_5", 15.0);
-                        if (aqi <= 0 && pm25 > 0) {
-                            aqi = (int) Math.round(pm25 * 2.1);
-                        }
-                        aqiStatus = getAqiStatus(aqi, isMalay);
-                    }
+                double pm25 = 0, pm10 = 0;
+                String aqiUrl = String.format(Locale.ROOT,
+                        "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=%.4f&longitude=%.4f&current=pm2_5,pm10,us_aqi",
+                        lat, lon);
+                JSONObject aqiJson = fetchJson(aqiUrl);
+                if (aqiJson != null && aqiJson.has("current")) {
+                    JSONObject curr = aqiJson.getJSONObject("current");
+                    aqi = curr.optInt("us_aqi", 50);
+                    pm25 = curr.optDouble("pm2_5", 0);
+                    pm10 = curr.optDouble("pm10", 0);
                 }
 
                 SharedPreferences.Editor edit = prefs.edit();
                 if (wJson != null) edit.putString(KEY_WEATHER_JSON, wJson.toString());
-                if (fallbackAqiJson != null) edit.putString(KEY_AQI_JSON, fallbackAqiJson.toString());
+                if (aqiJson != null) edit.putString(KEY_AQI_JSON, aqiJson.toString());
                 edit.putInt(KEY_TEMP, temp)
                     .putInt(KEY_CODE, code)
                     .putInt(KEY_AQI, aqi)
-                    .putString(KEY_AQI_STATUS, aqiStatus)
-                    .putString(KEY_AQI_PARAM, aqiParam)
-                    .putString(KEY_AQI_STATION_PLACE, aqiPlace)
-                    .putString(KEY_AQI_DATETIME, aqiDateTime)
-                    .putBoolean(KEY_AQI_IS_JAS, isJas)
+                    .putFloat(KEY_PM25, (float) pm25)
+                    .putFloat(KEY_PM10, (float) pm10)
                     .putLong(KEY_LAST_UPDATE, now)
                     .apply();
 
-                Log.i(TAG, "Full weather & AQI synced successfully (JAS=" + isJas + ", IPU=" + aqi + ")");
+                Log.i(TAG, "Weather & AQI synced (AQI=" + aqi + ")");
 
                 if (onUpdated != null) {
                     new Handler(Looper.getMainLooper()).post(onUpdated);
@@ -250,23 +210,17 @@ final class WeatherAirQuality {
         }, "weather-aqi-sync").start();
     }
 
-    /** Formats a clean Spannable UI string for the Home screen: "⛅ 29° Cerah  •  IPU 112 Tidak Sihat" */
+    /** Formats a clean Spannable UI string for the Home screen: "⛅ 29° Cerah  •  AQI 112 Tidak Sehat" */
     static CharSequence getFormatted(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         int temp = prefs.getInt(KEY_TEMP, 29);
         int code = prefs.getInt(KEY_CODE, 2);
         int aqi = prefs.getInt(KEY_AQI, 50);
 
-        boolean isMalay = Locale.getDefault().getLanguage().startsWith("ms");
-
         String icon = getWeatherIcon(code);
-        String condition = getWeatherCondition(code, isMalay);
+        String condition = getWeatherCondition(code);
 
-        String aqiStatus = prefs.getString(KEY_AQI_STATUS, getAqiStatus(aqi, isMalay));
-        // Translate status if Malay
-        if (isMalay) {
-            aqiStatus = translateAqiStatus(aqiStatus);
-        }
+        String aqiStatus = getAqiStatus(aqi);
         int aqiColor = getAqiColor(aqi);
 
         SpannableStringBuilder sb = new SpannableStringBuilder();
@@ -282,10 +236,9 @@ final class WeatherAirQuality {
         sb.append("  •  ");
         sb.setSpan(new ForegroundColorSpan(0x80FFFFFF), startDot, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        // Air Quality: "IPU 112 Tidak Sihat"
+        // Air Quality: "AQI 112 Tidak Sehat"
         int startAqi = sb.length();
-        String prefix = isMalay ? "IPU " : "API ";
-        sb.append(prefix).append(String.valueOf(aqi)).append(" ").append(aqiStatus);
+        sb.append("AQI ").append(String.valueOf(aqi)).append(" ").append(aqiStatus);
         sb.setSpan(new ForegroundColorSpan(aqiColor), startAqi, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         sb.setSpan(new StyleSpan(Typeface.BOLD), startAqi, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
@@ -307,8 +260,8 @@ final class WeatherAirQuality {
         int windSpeed = 8;
         int uvIndex = 6;
         int rainChanceToday = 60;
-        String sunrise = "6:54 AM";
-        String sunset = "6:58 PM";
+        String sunrise = "06:00";
+        String sunset = "18:00";
 
         List<HourlyItem> hourly = new ArrayList<>();
         List<DailyItem> daily = new ArrayList<>();
@@ -349,7 +302,7 @@ final class WeatherAirQuality {
                         int len = Math.min(7, days.length());
                         for (int i = 0; i < len; i++) {
                             String dayStr = days.optString(i, "");
-                            String dayLabel = i == 0 ? "Today" : formatDayName(dayStr);
+                            String dayLabel = i == 0 ? "Hari ini" : formatDayName(dayStr);
                             int c = dailyCodes != null ? dailyCodes.optInt(i, 2) : 2;
                             int mx = maxTemps != null ? (int) Math.round(maxTemps.optDouble(i, 31.0)) : 31;
                             int mn = minTemps != null ? (int) Math.round(minTemps.optDouble(i, 24.0)) : 24;
@@ -375,7 +328,7 @@ final class WeatherAirQuality {
                             if (tStr.contains("T")) {
                                 int hour = Integer.parseInt(tStr.substring(tStr.indexOf('T') + 1, tStr.indexOf(':')));
                                 if (count > 0 || hour >= currentHour) {
-                                    String label = count == 0 ? "Now" : formatHourLabel(hour);
+                                    String label = count == 0 ? "Sekarang" : formatHourLabel(hour);
                                     int t = (int) Math.round(temps.optDouble(i, 28.0));
                                     int c = codes != null ? codes.optInt(i, 2) : 2;
                                     int r = rains != null ? rains.optInt(i, 30) : 30;
@@ -393,55 +346,32 @@ final class WeatherAirQuality {
 
         // Fill fallback if empty
         if (hourly.isEmpty()) {
-            hourly.add(new HourlyItem("Now", "⛅", temp, 40));
-            hourly.add(new HourlyItem("6 PM", "⛅", temp, 35));
-            hourly.add(new HourlyItem("7 PM", "☁", temp - 1, 30));
-            hourly.add(new HourlyItem("8 PM", "☁", temp - 2, 25));
-            hourly.add(new HourlyItem("9 PM", "☁", temp - 2, 20));
+            hourly.add(new HourlyItem("Sekarang", "⛅", temp, 40));
         }
 
         if (daily.isEmpty()) {
-            daily.add(new DailyItem("Today", "⛅", highTemp, lowTemp, 60));
-            daily.add(new DailyItem("Sat", "🌧", 31, 24, 75));
-            daily.add(new DailyItem("Sun", "⛅", 32, 24, 50));
+            daily.add(new DailyItem("Hari ini", "⛅", highTemp, lowTemp, 60));
         }
 
         // Air Quality
         int aqi = prefs.getInt(KEY_AQI, 50);
-        boolean isJas = prefs.getBoolean(KEY_AQI_IS_JAS, true);
-        String aqiStatus = prefs.getString(KEY_AQI_STATUS, "Sederhana");
-        String aqiParam = prefs.getString(KEY_AQI_PARAM, "PM2.5");
-        String stationPlace = prefs.getString(KEY_AQI_STATION_PLACE, AppLocationManager.getStationPlace(context));
+        String aqiStatus = getAqiStatus(aqi);
+        String aqiParam = "PM2.5";
+        String stationPlace = AppLocationManager.getStationPlace(context);
         String stationId = AppLocationManager.getStationId(context);
         String locationName = AppLocationManager.getLocationName(context).toUpperCase(Locale.ROOT);
 
-        double pm25 = aqi * 0.45;
-        double pm10 = aqi * 0.55;
-
-        boolean isMalay = Locale.getDefault().getLanguage().startsWith("ms");
-        if (isMalay) {
-            aqiStatus = translateAqiStatus(aqiStatus);
-        }
+        double pm25 = prefs.getFloat(KEY_PM25, 0f);
+        double pm10 = prefs.getFloat(KEY_PM10, 0f);
         int aqiColor = getAqiColor(aqi);
 
-        SimpleDateFormat sdf = new SimpleDateFormat("h:mm a", Locale.getDefault());
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", ID);
         String updated = sdf.format(new Date());
 
-        return new FullWeather(locationName, stationId, stationPlace, isJas, temp, apparentTemp,
-                getWeatherCondition(code, isMalay), getWeatherIcon(code),
+        return new FullWeather(locationName, stationId, stationPlace, temp, apparentTemp,
+                getWeatherCondition(code), getWeatherIcon(code),
                 highTemp, lowTemp, humidity, windSpeed, uvIndex, rainChanceToday,
                 sunrise, sunset, aqi, aqiStatus, aqiColor, aqiParam, pm25, pm10, updated, hourly, daily);
-    }
-
-    private static String translateAqiStatus(String status) {
-        if (status == null) return "Sederhana";
-        String s = status.toLowerCase(Locale.ROOT);
-        if (s.contains("good") || s.contains("baik")) return "Baik";
-        if (s.contains("moderate") || s.contains("sederhana")) return "Sederhana";
-        if (s.contains("very unhealthy") || s.contains("sangat")) return "Sangat Tidak Sihat";
-        if (s.contains("unhealthy") || s.contains("tidak sihat")) return "Tidak Sihat";
-        if (s.contains("hazardous") || s.contains("bahaya")) return "Berbahaya";
-        return status;
     }
 
     private static String formatSunTime(String isoTime) {
@@ -450,13 +380,11 @@ final class WeatherAirQuality {
                 String[] parts = isoTime.substring(isoTime.indexOf('T') + 1).split(":");
                 int h = Integer.parseInt(parts[0]);
                 int m = Integer.parseInt(parts[1]);
-                String ampm = h < 12 ? "AM" : "PM";
-                int hh = h % 12 == 0 ? 12 : h % 12;
-                return String.format(Locale.ROOT, "%d:%02d %s", hh, m, ampm);
+                return String.format(Locale.ROOT, "%02d:%02d", h, m);
             }
         } catch (Exception ignored) {
         }
-        return "6:54 AM";
+        return "06:00";
     }
 
     private static String formatDayName(String ymd) {
@@ -464,7 +392,7 @@ final class WeatherAirQuality {
             SimpleDateFormat inFmt = new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
             Date d = inFmt.parse(ymd);
             if (d != null) {
-                SimpleDateFormat outFmt = new SimpleDateFormat("EEE", Locale.getDefault());
+                SimpleDateFormat outFmt = new SimpleDateFormat("EEE", ID);
                 return outFmt.format(d);
             }
         } catch (Exception ignored) {
@@ -473,41 +401,39 @@ final class WeatherAirQuality {
     }
 
     private static String formatHourLabel(int hour24) {
-        String ampm = hour24 < 12 ? "AM" : "PM";
-        int hh = hour24 % 12 == 0 ? 12 : hour24 % 12;
-        return hh + " " + ampm;
+        return String.format(Locale.ROOT, "%02d:00", hour24);
     }
 
-    private static String getWeatherCondition(int code, boolean isMalay) {
+    private static String getWeatherCondition(int code) {
         switch (code) {
             case 0:
-                return isMalay ? "Cerah" : "Clear sky";
+                return "Cerah";
             case 1:
             case 2:
-                return isMalay ? "Sebahagian Cerah" : "Partly cloudy";
+                return "Cerah Berawan";
             case 3:
-                return isMalay ? "Mendung" : "Overcast";
+                return "Mendung";
             case 45:
             case 48:
-                return isMalay ? "Berkabus / Jerebu" : "Fog / Haze";
+                return "Berkabut";
             case 51:
             case 53:
             case 55:
-                return isMalay ? "Hujan Renyai" : "Light drizzle";
+                return "Gerimis";
             case 61:
             case 63:
             case 65:
-                return isMalay ? "Hujan" : "Rain";
+                return "Hujan";
             case 80:
             case 81:
             case 82:
-                return isMalay ? "Hujan Lebat" : "Heavy rain";
+                return "Hujan Lebat";
             case 95:
             case 96:
             case 99:
-                return isMalay ? "Ribut Petir" : "Thunderstorm";
+                return "Badai Petir";
             default:
-                return isMalay ? "Cerah" : "Fair";
+                return "Cerah";
         }
     }
 
@@ -544,19 +470,19 @@ final class WeatherAirQuality {
         }
     }
 
-    private static String getAqiStatus(int aqi, boolean isMalay) {
-        if (aqi <= 50) return isMalay ? "Baik" : "Good";
-        if (aqi <= 100) return isMalay ? "Sederhana" : "Moderate";
-        if (aqi <= 200) return isMalay ? "Tidak Sihat" : "Unhealthy";
-        if (aqi <= 300) return isMalay ? "Sangat Tidak Sihat" : "Very Unhealthy";
-        return isMalay ? "Berbahaya" : "Hazardous";
+    private static String getAqiStatus(int aqi) {
+        if (aqi <= 50) return "Baik";
+        if (aqi <= 100) return "Sedang";
+        if (aqi <= 200) return "Tidak Sehat";
+        if (aqi <= 300) return "Sangat Tidak Sehat";
+        return "Berbahaya";
     }
 
     private static int getAqiColor(int aqi) {
         if (aqi <= 50) return 0xFF4ADE80;  // Green (Baik)
-        if (aqi <= 100) return 0xFF38BDF8; // Sky Blue (Sederhana)
-        if (aqi <= 200) return 0xFFFB923C; // Orange (Tidak Sihat)
-        if (aqi <= 300) return 0xFFEF4444; // Red (Sangat Tidak Sihat)
+        if (aqi <= 100) return 0xFF38BDF8; // Sky Blue (Sedang)
+        if (aqi <= 200) return 0xFFFB923C; // Orange (Tidak Sehat)
+        if (aqi <= 300) return 0xFFEF4444; // Red (Sangat Tidak Sehat)
         return 0xFF991B1B;                 // Maroon (Berbahaya)
     }
 
