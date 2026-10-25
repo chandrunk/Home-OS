@@ -1,0 +1,50 @@
+# TCL "UnionTV" (ro.product.model/device UnionTV, brand TCL, ro.hardware rtd284x, Realtek),
+# Android TV 9 (API 28), build PPR2.180905.006.A1, 32-bit (armeabi-v7a), 1.4 GB RAM, 720p panel,
+# /data 4.2 GB (89% full before debloat). Indonesian home unit.
+# Started from examples/tcl-beyondtv-rt2851 (same Android 9 Realtek generation, same HOME fallbacks).
+#
+# Apply:   TV_HOST=<tv ip> tools/disable.sh examples/tcl-uniontv-rtd284x/debloat.txt
+# Undo:    TV_HOST=<tv ip> tools/restore.sh examples/tcl-uniontv-rtd284x/debloat.txt
+# Everything is DISABLED, not uninstalled. Comment out any line you want to keep.
+#
+# Stock launcher: com.google.android.tvlauncher (restore.sh default). Other HOME claimants are only
+# fallbacks: com.tcl.keycustomfunctionservice/.FallbackHome and com.android.tv.settings FallbackHome.
+#
+# DO NOT DISABLE (load-bearing on TCL Realtek firmware, see tcl-beyondtv-rt2851):
+# com.tcl.tv com.tcl.tvinput com.tcl.tvpassthrough com.tcl.sourcemananger
+# com.tcl.keycustomfunctionservice com.tcl.framework.custom com.tcl.tcl_bt_rcu_service com.tcl.autopair
+# com.google.android.tv.remote.service com.tcl.inputmethod.international com.tcl.settings
+# com.tcl.showmode com.tcl.xian.StartandroidService com.tcl.appstatecontroller com.tcl.providers.config
+
+# 1. Telemetry and analytics
+com.tcl.bi                                  # TCL BI analytics
+com.google.android.feedback                 # "send feedback"
+com.google.android.tv.bugreportsender       # bug report uploader
+com.google.android.partnersetup             # partner-app attribution
+com.google.android.onetimeinitializer       # one-time setup leftovers
+android.autoinstalls.config.tcl.device      # partner-app auto installer
+
+# 2. Content, recommendation rows and promos
+com.google.android.tvrecommendations        # home-screen recommendation rows
+com.google.android.leanbacklauncher.recommendations
+com.tcl.partnercustomizer                   # TCL promo rows, T-key page
+com.tcl.messagebox                          # TCL message/promo box
+com.tcl.esticker                            # retail demo stickers
+
+# 3. Unused preloads
+com.google.android.videos                   # Play Movies & TV (discontinued)
+com.google.android.music                    # Play Music (discontinued)
+com.google.android.play.games               # Play Games
+com.tcl.useragreement                       # end-user agreement screens
+
+# 4. Ask first (the owner may use these)
+# com.tcl.ui_mediaCenter                    # USB media centre
+# com.tcl.miracast                          # Miracast screen mirroring
+# com.tcl.MultiScreenInteraction_TV         # TCL T-Cast phone app link
+# com.tcl.versionUpdateApp                  # TCL firmware updater
+com.google.android.katniss                  # Google voice search and the mic button
+com.google.android.speech.pumpkin           # offline speech recognition
+
+# 5. After the launcher is installed
+com.tcl.tvweishi                            # TCL "TV Guard" cleaner
+com.tcl.appmarket2                         # TCL app store (Play Store stays)
