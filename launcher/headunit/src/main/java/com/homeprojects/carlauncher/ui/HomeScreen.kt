@@ -384,7 +384,7 @@ private fun MediaHubCard() {
                 Modifier.weight(1f).fillMaxHeight().touch {
                     when {
                         MediaHub.hasSession -> MediaHub.playPause()
-                        source == MediaSource.YT -> open(context, Shortcuts.YT_MUSIC)
+                        source == MediaSource.YT -> if (!MediaHub.resume(context)) open(context, Shortcuts.YT_MUSIC)
                         NativeAppLauncher.openBluetoothMusic(context) -> Unit
                         else -> Ui.toast("NO BLUETOOTH AUDIO // PLAY ON YOUR PHONE")
                     }
@@ -452,7 +452,8 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
             }
             Txt(title, 26, Sans, Modifier.padding(top = 6.dp), weight = FontWeight.ExtraBold)
             Txt(subtitle, 17, Sans, Modifier.padding(top = 2.dp), N.Muted, FontWeight.SemiBold)
-            Progress(info, Modifier.padding(top = 18.dp))
+            // Bluetooth without a timeline (NWD's module sends none): no bar rather than one stuck at 00:00.
+            if (source != MediaSource.BT || (info?.durationMs ?: 0L) > 0) Progress(info, Modifier.padding(top = 18.dp))
         }
     }
 }

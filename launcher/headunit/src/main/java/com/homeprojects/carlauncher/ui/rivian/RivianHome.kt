@@ -405,7 +405,7 @@ private fun MediaCard() {
                     },
                     17, Sans, Modifier.padding(top = 2.dp), p.text2, FontWeight.SemiBold,
                 )
-                Progress(m, Modifier.padding(top = 18.dp))
+                if (source != MediaSource.BT || (m?.durationMs ?: 0L) > 0) Progress(m, Modifier.padding(top = 18.dp))
             }
         }
         Spacer(Modifier.weight(1f))
@@ -417,7 +417,7 @@ private fun MediaCard() {
                 Modifier.weight(1f).fillMaxHeight().touch {
                     when {
                         MediaHub.hasSession -> MediaHub.playPause()
-                        source == MediaSource.YT -> open(context, Shortcuts.YT_MUSIC)
+                        source == MediaSource.YT -> if (!MediaHub.resume(context)) open(context, Shortcuts.YT_MUSIC)
                         NativeAppLauncher.openBluetoothMusic(context) -> Unit
                         else -> Ui.toast("No Bluetooth audio. Play on your phone.")
                     }

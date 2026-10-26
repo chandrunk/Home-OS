@@ -3,6 +3,7 @@ package com.homeprojects.carlauncher
 import android.app.Notification
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -16,6 +17,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import android.view.KeyEvent
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -148,6 +150,7 @@ object MediaHub {
 
     fun select(s: MediaSource) {
         source.value = s
+        if (s == MediaSource.BT) NwdBluetooth.takeAudio(true)   // muted again only when an Android player plays
         pick()
     }
 
@@ -160,7 +163,10 @@ object MediaHub {
         if (nwd) return NwdBluetooth.playPause()
         val c = current ?: return
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause()
-        else c.transportControls.play()
+        else {
+            if (!isBluetooth(c.packageName)) NwdBluetooth.takeAudio(false)
+            c.transportControls.play()
+        }
     }
 
     fun next() {
@@ -175,11 +181,30 @@ object MediaHub {
 
     /** The phone started playing over NWD Bluetooth: show it, unless another player is playing. */
     fun bluetoothChanged(bt: MediaInfo?) {
-        if (bt?.playing == true && current?.playbackState?.state != PlaybackState.STATE_PLAYING) source.value = MediaSource.BT
+        if (bt?.playing == true && current?.playbackState?.state != PlaybackState.STATE_PLAYING) {
+            source.value = MediaSource.BT
+            NwdBluetooth.takeAudio(true)
+        }
         pick()
     }
 
     private fun isBluetooth(pkg: String) = pkg in BT_PACKAGES || pkg.contains("bluetooth", ignoreCase = true)
+
+    /**
+     * YT Music with no active session (it drops it after losing the speakers to the phone, or after a pause):
+     * a play key to its media button receiver resumes the last queue in the background, without opening it.
+     */
+    fun resume(context: Context, pkg: String = YT_MUSIC): Boolean {
+        val intent = Intent(Intent.ACTION_MEDIA_BUTTON).setPackage(pkg)
+        if (context.packageManager.queryBroadcastReceivers(intent, 0).isEmpty()) return false
+        NwdBluetooth.takeAudio(false)
+        for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
+            context.sendBroadcast(Intent(intent).putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(action, KeyEvent.KEYCODE_MEDIA_PLAY)))
+        }
+        return true
+    }
+
+    private var androidPlaying = false
 
     private fun pick() {
         val bt = source.value == MediaSource.BT
@@ -192,6 +217,11 @@ object MediaHub {
             current = next
             next?.registerCallback(callback, main)
         }
+        // An Android player just started (from its own app too): give it the speakers. Only on the start, so a
+        // radio opened later keeps them.
+        val playing = !bt && next?.playbackState?.state == PlaybackState.STATE_PLAYING
+        if (playing && !androidPlaying) NwdBluetooth.takeAudio(false)
+        androidPlaying = playing
         publish()
     }
 

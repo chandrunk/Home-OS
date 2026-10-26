@@ -9,6 +9,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.Parcel
 import android.os.SystemClock
+import android.provider.Settings
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -27,23 +28,54 @@ object NwdBluetooth {
     private const val TX_IS_PLAYING = 24
     private const val TX_QUERY_ID3 = 60      // makes the module re-send the ID3 broadcast
 
+    private const val TX_IS_MUTED = 59
+
+    // The module decodes A2DP muted until something un-mutes it. NWD's source manager does that when its own BT
+    // music app comes forward; its direct source request for BT audio (21) has no entry on this firmware and
+    // throws, so the launcher talks to the module's mute receiver instead. Muting also pauses the phone.
+    private const val UNMUTE = "com.bt.ACTION_A2DP_UNMUTE"
+    private const val MUTE = "com.bt.ACTION_A2DP_MUTE"
+
+    // The MCU plays one source. The radio (4) keeps it after its app closes; Android's players and the phone
+    // (decoded on the Android side) need SOURCE_ANDROID, which the direct request does know.
+    private const val REQUEST_SOURCE = "com.nwd.action.ACTION_REQUEST_CHANGE_SOURCE"
+    private const val SOURCE_ANDROID = 0
+
     /** The phone's song; null when nothing has played since the phone's audio connected. */
     val info = MutableStateFlow<MediaInfo?>(null)
     private var binder: IBinder? = null
-    private var started = false
+    private var app: Context? = null
 
     val available: Boolean get() = binder != null
 
     fun start(context: Context) {
-        if (started) return
+        if (this.app != null) return
         val app = context.applicationContext
         if (runCatching { app.packageManager.getPackageInfo(PKG, 0) }.isFailure) return
-        started = true
+        this.app = app
         app.registerReceiver(receiver, IntentFilter().apply { listOf(ID3, PLAY, PAUSE, A2DP_RELEASE).forEach(::addAction) })
         runCatching { app.bindService(Intent("com.bt.ACTION_START_SERVICE").setPackage(PKG), connection, Context.BIND_AUTO_CREATE) }
     }
 
-    fun playPause() = control(0)
+    /**
+     * The speakers for the phone (bluetooth) or for an Android player: the MCU back on Android's source (off the
+     * radio), and the phone's audio un-muted, or muted (and paused) when an Android player takes over.
+     */
+    fun takeAudio(bluetooth: Boolean) {
+        val app = app ?: return
+        if (Settings.System.getInt(app.contentResolver, "mcu_current_source", SOURCE_ANDROID) != SOURCE_ANDROID) {
+            app.sendBroadcast(Intent(REQUEST_SOURCE).putExtra("extra_source_id", SOURCE_ANDROID.toByte()))
+        }
+        val muted = call(TX_IS_MUTED)
+        if (muted != null && (muted == 1) != bluetooth) return   // already as asked
+        app.sendBroadcast(Intent(if (bluetooth) UNMUTE else MUTE).setPackage(PKG))
+    }
+
+    fun playPause() {
+        takeAudio(true)
+        control(0)
+    }
+
     fun previous() = control(1)
     fun next() = control(2)
 
@@ -54,7 +86,10 @@ object NwdBluetooth {
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             binder = service
-            if (call(TX_IS_PLAYING) == 1) update(playing = true)
+            if (call(TX_IS_PLAYING) == 1) {
+                update(playing = true)
+                MediaHub.bluetoothChanged(info.value)
+            }
             call(TX_QUERY_ID3)
         }
 
@@ -85,10 +120,10 @@ object NwdBluetooth {
             title = title ?: old?.title.orEmpty(),
             artist = artist ?: old?.artist.orEmpty(),
             art = null,
-            durationMs = 0,
+            durationMs = 0,   // the module sends no position or length: the card shows no timeline
             positionMs = 0,
             positionAt = SystemClock.elapsedRealtime(),
-            speed = 0f,   // the module sends no song position; keep the clock at 00:00
+            speed = 0f,
             playing = playing ?: old?.playing ?: false,
         )
     }
