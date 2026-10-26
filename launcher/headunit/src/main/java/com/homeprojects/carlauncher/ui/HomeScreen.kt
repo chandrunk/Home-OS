@@ -384,8 +384,7 @@ private fun MediaHubCard() {
                 Modifier.weight(1f).fillMaxHeight().touch {
                     when {
                         MediaHub.hasSession -> MediaHub.playPause()
-                        source == MediaSource.YT -> if (!MediaHub.resume(context)) open(context, Shortcuts.YT_MUSIC)
-                        NativeAppLauncher.openBluetoothMusic(context) -> Unit
+                        source == MediaSource.YT -> if (!MediaHub.resume(context)) Ui.toast("YT MUSIC NOT INSTALLED")
                         else -> Ui.toast("NO BLUETOOTH AUDIO // PLAY ON YOUR PHONE")
                     }
                 }.surface(N.White, 18, border = false),
@@ -428,12 +427,15 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
     val subtitle = when {
         info != null -> info.artist
         !listening -> "Tap to allow notification access"
-        source == MediaSource.YT -> "Press play to open YT Music"
+        source == MediaSource.YT -> "Tap to open YT Music"
         else -> "Play music on your phone"
     }
     Row(
         Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            .then(if (!listening) Modifier.touch { openListenerSettings(context) } else Modifier),
+            .touch {   // the song opens its app; the buttons below only control it
+                if (!listening && source == MediaSource.YT) openListenerSettings(context)
+                else if (!NativeAppLauncher.openPlayer(context, source, info)) Ui.toast("APP NOT FOUND")
+            },
         horizontalArrangement = Arrangement.spacedBy(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

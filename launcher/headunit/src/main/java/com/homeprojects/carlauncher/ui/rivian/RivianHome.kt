@@ -385,7 +385,10 @@ private fun MediaCard() {
         val m = info
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp)
-                .then(if (!listening) Modifier.touch { openListenerSettings(context) } else Modifier),
+                .touch {   // the song opens its app; the buttons below only control it
+                    if (!listening && source == MediaSource.YT) openListenerSettings(context)
+                    else if (!NativeAppLauncher.openPlayer(context, source, m)) Ui.toast("App not found.")
+                },
             Arrangement.spacedBy(18.dp), Alignment.CenterVertically,
         ) {
             Box(Modifier.size(116.dp).rCard(p.elevated, 22, p), Alignment.Center) {
@@ -400,7 +403,7 @@ private fun MediaCard() {
                     when {
                         m != null -> m.artist
                         !listening -> "Tap to allow notification access"
-                        source == MediaSource.YT -> "Press play to open YT Music"
+                        source == MediaSource.YT -> "Tap to open YT Music"
                         else -> "Play music on your phone"
                     },
                     17, Sans, Modifier.padding(top = 2.dp), p.text2, FontWeight.SemiBold,
@@ -417,8 +420,7 @@ private fun MediaCard() {
                 Modifier.weight(1f).fillMaxHeight().touch {
                     when {
                         MediaHub.hasSession -> MediaHub.playPause()
-                        source == MediaSource.YT -> if (!MediaHub.resume(context)) open(context, Shortcuts.YT_MUSIC)
-                        NativeAppLauncher.openBluetoothMusic(context) -> Unit
+                        source == MediaSource.YT -> if (!MediaHub.resume(context)) Ui.toast("YT Music isn't installed.")
                         else -> Ui.toast("No Bluetooth audio. Play on your phone.")
                     }
                 }.surface(Rv.Yellow, 20, border = false),

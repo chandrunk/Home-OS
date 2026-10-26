@@ -127,6 +127,11 @@ object NativeAppLauncher {
         return launchPackage(context, "com.nwd.bt.music")   // NWD: its own BT music app
     }
 
+    /** The app behind the now-playing card: the playing app (YT Music when none), or the Bluetooth music app. */
+    fun openPlayer(context: Context, source: MediaSource, info: MediaInfo?): Boolean =
+        if (source == MediaSource.BT) openBluetoothMusic(context)
+        else launchPackage(context, info?.packageName ?: MediaHub.YT_MUSIC)
+
     private val BT_MUSIC = listOf("com.autochips.bluetooth" to "com.autochips.bluetooth.BtMusicActivity")
 
     fun launchableApps(context: Context, withIcons: Boolean = true): List<AppEntry> {
