@@ -150,6 +150,12 @@ fun AppEffects() {
             delay(60_000)
         }
     }
+    LaunchedEffect(Ui.wifi) {
+        while (true) {
+            Connectivity.refresh(context)
+            delay(5_000)
+        }
+    }
     val headlights = CarHeadlightDetector.headlightsOn(Look.threshold)
     LaunchedEffect(Look.mode, headlights, weather.isDay, minute) {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)

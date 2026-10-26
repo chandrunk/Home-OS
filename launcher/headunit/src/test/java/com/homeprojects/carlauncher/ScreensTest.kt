@@ -46,6 +46,7 @@ class ScreensTest {
         Night.on = false
         Look.set(skin = Skin.NOTHING, mode = ThemeMode.AUTO)
         Ui.toast = null
+        Connectivity.show(ssid = "Rumah 5G", phone = "Pixel 8")
         NavHub.state.value = NavInfo("250m", "TURN LEFT", "Jl. Jend. Sudirman (Semanggi)", 14)
     }
 
@@ -83,6 +84,7 @@ class ScreensTest {
             title = "Sebuah Lagu Dengan Judul Yang Sangat Panjang Sekali Hingga Tidak Muat Di Layar (Live Version)",
             artist = "Nama Penyanyi Yang Panjang feat. Kolaborator Lain • Album Kompilasi Terbaik Sepanjang Masa",
         )
+        Connectivity.show(ssid = "Jaringan WiFi Rumah Dengan Nama Panjang Sekali", phone = "Galaxy S23 FE Milik Seseorang Yang Panjang")
         Ui.toast("YOUTUBE MUSIC NOT FOUND // PICK AN APP FROM THE LIST BELOW TO ASSIGN IT TO THIS BUTTON NOW")
         shoot()
     }
@@ -177,6 +179,7 @@ class ScreensTest {
     @Test
     fun rivianLongTextDay() {
         rivian(night = false)
+        Connectivity.show(ssid = "Jaringan WiFi Rumah Dengan Nama Panjang Sekali", phone = "Galaxy S23 FE Milik Seseorang Yang Panjang")
         NavHub.state.value = NavInfo("12.5km", "SLIGHT RIGHT",
             "Jl. Letnan Jenderal S. Parman Kav. 28 (Slipi, arah Tomang dan Grogol Petamburan)", 125)
         MediaHub.info.value = MediaHub.info.value!!.copy(

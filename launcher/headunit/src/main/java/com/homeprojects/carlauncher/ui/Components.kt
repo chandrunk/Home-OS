@@ -5,6 +5,7 @@ package com.homeprojects.carlauncher.ui
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +17,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
@@ -229,3 +231,37 @@ fun ToastHost(modifier: Modifier = Modifier) {
 fun Modifier.dragFraction(key: Any, onChange: (Float) -> Unit): Modifier =
     pointerInput(key) { detectTapGestures { onChange((it.x / size.width).coerceIn(0f, 1f)) } }
         .pointerInput(key) { detectHorizontalDragGestures { c, _ -> onChange((c.position.x / size.width).coerceIn(0f, 1f)) } }
+
+/** A dotted hairline (Nothing's divider): 2 px dots every 6 px across the top or bottom edge. */
+fun Modifier.dottedLine(color: Color, top: Boolean = true): Modifier = drawBehind {
+    val step = 6.dp.toPx()
+    val r = 1.dp.toPx()
+    val y = if (top) r else size.height - r
+    var x = r
+    while (x < size.width) {
+        drawCircle(color, r, Offset(x, y))
+        x += step
+    }
+}
+
+/**
+ * A progress bar of dots: lit up to [fraction], the last lit dot in [head] colour. Drawn in one pass,
+ * so a ticking position redraws a single small layer.
+ */
+@Composable
+fun DotProgress(fraction: Float, lit: Color, unlit: Color, head: Color, modifier: Modifier = Modifier, dot: Int = 5, gap: Int = 5) {
+    Canvas(modifier.height(dot.dp)) {
+        val d = dot.dp.toPx()
+        val step = d + gap.dp.toPx()
+        val n = ((size.width + gap.dp.toPx()) / step).toInt().coerceAtLeast(1)
+        val on = (fraction.coerceIn(0f, 1f) * n).toInt()
+        for (i in 0 until n) {
+            val c = when {
+                i == on && fraction > 0f -> head
+                i < on -> lit
+                else -> unlit
+            }
+            drawCircle(c, d / 2, Offset(i * step + d / 2, d / 2))
+        }
+    }
+}

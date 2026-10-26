@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.homeprojects.carlauncher.CarNotificationListener
+import com.homeprojects.carlauncher.Connectivity
 import com.homeprojects.carlauncher.MediaHub
 import com.homeprojects.carlauncher.MediaInfo
 import com.homeprojects.carlauncher.MediaSource
@@ -130,6 +131,15 @@ private fun TelemetryZone() {
         Modifier.width(656.dp).fillMaxHeight().layer().clip(shape).background(p.card).dotMatrix(p.border, 24)
             .border(1.dp, p.border, shape).padding(22.dp)
     ) {
+        // Network and phone, above the turn card. Long names end in "…".
+        Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), Arrangement.spacedBy(8.dp), Alignment.CenterVertically) {
+            StatusChip(
+                if (Connectivity.ssid != null || Ui.wifi) R.drawable.lc_wifi else R.drawable.lc_wifi_off,
+                Connectivity.ssid ?: if (Ui.wifi) "Wi-Fi" else "No Wi-Fi", on = Ui.online,
+            )
+            StatusChip(R.drawable.lc_bluetooth, Connectivity.phone ?: if (Connectivity.bluetoothOn) "No phone" else "Bluetooth off",
+                on = Connectivity.phone != null)
+        }
         val nav by NavHub.state.collectAsState()
         val n = nav
         if (n != null) NavCard(n) { open(context, Shortcuts.MAPS) } else Cruising(fix) { open(context, Shortcuts.MAPS) }
@@ -258,6 +268,19 @@ private fun conditionWords(c: String) = when (c) {
 }
 
 @Composable
+private fun RowScope.StatusChip(icon: Int, text: String, on: Boolean) {
+    val p = LocalR.current
+    Row(
+        Modifier.weight(1f, fill = false).rCard(p.elevated, 999, p).padding(horizontal = 12.dp, vertical = 6.dp),
+        Arrangement.spacedBy(8.dp), Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).background(if (on) Rv.Green else p.muted, CircleShape))
+        LIcon(icon, 16, tint = p.text2)
+        Txt(text, 15, Sans, color = if (on) p.text else p.text2, weight = FontWeight.Bold)
+    }
+}
+
+@Composable
 private fun StatCard(label: String, value: String, icon: Int, tint: Color, rotation: Float = 0f, onLongClick: (() -> Unit)? = null) {
     val p = LocalR.current
     var mod = Modifier.fillMaxWidth().layer()
@@ -304,12 +327,7 @@ private fun MediaZone() {
                     LIcon(R.drawable.lc_play_filled, 26, tint = Color.White)
                 }
                 Column {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Txt("Apple CarPlay", 20, Sans, color = p.text, weight = FontWeight.ExtraBold)
-                        Box(Modifier.rCard(p.elevated, 999, p).padding(horizontal = 8.dp, vertical = 2.dp)) {
-                            Txt("ZLINK", 15, Sans, color = p.text2, weight = FontWeight.ExtraBold)
-                        }
-                    }
+                    Txt("CarPlay / Android Auto", 20, Sans, color = p.text, weight = FontWeight.ExtraBold)
                     Row(Modifier.padding(top = 4.dp), Arrangement.spacedBy(8.dp), Alignment.CenterVertically) {
                         // Static: an endless pulse would redraw the screen every frame.
                         Box(Modifier.size(8.dp).background(Rv.Green, CircleShape))

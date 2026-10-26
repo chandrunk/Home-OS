@@ -22,7 +22,7 @@ data class Shortcut(
 )
 
 object Shortcuts {
-    val ZLINK = Shortcut("zlink", "Zlink CarPlay", R.drawable.lc_smartphone,
+    val ZLINK = Shortcut("zlink", "CarPlay / Android Auto", R.drawable.lc_smartphone,
         // Zlink, then the open-source DiPlay (CarPlay) and Headunit Revived (Android Auto) receivers.
         listOf("com.zjinnova.zlink", "com.zjinnova.zlink5", "com.shihab.diplay", "com.andrerinas.headunitrevived"),
         listOf("zlink", "carplay", "diplay"))

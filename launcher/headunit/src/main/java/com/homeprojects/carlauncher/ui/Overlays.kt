@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.homeprojects.carlauncher.AppEntry
 import com.homeprojects.carlauncher.CarHeadlightDetector
+import com.homeprojects.carlauncher.Connectivity
 import com.homeprojects.carlauncher.MediaHub
 import com.homeprojects.carlauncher.NativeAppLauncher
 import com.homeprojects.carlauncher.R
@@ -216,17 +217,19 @@ fun AppPicker(shortcut: Shortcut) {
 @Composable
 fun QuickSettings() {
     val context = LocalContext.current
-    val btOn = remember {
-        runCatching { context.getSystemService(BluetoothManager::class.java)?.adapter?.isEnabled == true }.getOrDefault(false)
-    }
     OverlayFrame("03 SYSTEM", "QUICK SETTINGS") {
         Spacer(Modifier.weight(1f))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            SettingTile("Wi-Fi Hotspot", if (Ui.wifi) "Connected" else "Not connected", R.drawable.lc_wifi, Ui.wifi) {
+            SettingTile("Wi-Fi", Connectivity.ssid ?: if (Ui.wifi) "Connected" else "Not connected", R.drawable.lc_wifi, Ui.wifi) {
                 openSettings(context, Settings.ACTION_WIFI_SETTINGS)
             }
-            SettingTile("Bluetooth", if (btOn) "On" else "Off", R.drawable.lc_bluetooth, btOn) {
-                openSettings(context, Settings.ACTION_BLUETOOTH_SETTINGS)
+            SettingTile(
+                "Bluetooth",
+                Connectivity.phone ?: if (Connectivity.bluetoothOn) "No phone connected" else "Off",
+                R.drawable.lc_bluetooth, Connectivity.phone != null,
+            ) {
+                // NWD pairs phones in its own phone app; Android's Bluetooth settings don't see them.
+                if (Connectivity.nwd) open(context, Shortcuts.BT_PHONE) else openSettings(context, Settings.ACTION_BLUETOOTH_SETTINGS)
             }
             SettingTile("Radio", "Open Native App", R.drawable.lc_radio, false,
                 onLongClick = { pick(Shortcuts.RADIO) }) { open(context, Shortcuts.RADIO) }

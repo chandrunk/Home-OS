@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.homeprojects.carlauncher.CarNotificationListener
+import com.homeprojects.carlauncher.Connectivity
 import com.homeprojects.carlauncher.MediaHub
 import com.homeprojects.carlauncher.MediaInfo
 import com.homeprojects.carlauncher.MediaSource
@@ -115,13 +116,23 @@ private fun TelemetryZone() {
         Modifier.width(664.dp).fillMaxHeight().layer().clip(shape).background(N.Card).dotMatrix()
             .border(1.dp, N.Border, shape).padding(22.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(12.dp), Alignment.CenterVertically) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 RedDot(8, color = N.Muted)
-                Txt("NOTHING CAR OS // 01 TELEMETRY", 15, Mono, color = N.Muted, tracking = Track.WIDEST)
+                Txt("NOTHING CAR OS", 15, Mono, color = N.Muted, tracking = Track.WIDEST)
             }
-            Box(Modifier.surface(N.Elevated, 999).padding(horizontal = 10.dp, vertical = 4.dp)) {
-                Txt(if (fix) "[GPS LOCKED]" else "[SEARCHING GPS]", 15, Mono, color = N.Muted, weight = FontWeight.Bold)
+            // Which network and which phone, where the eye already goes for status. Long names end in "…".
+            Row(Modifier.weight(1f), Arrangement.spacedBy(8.dp, Alignment.End), Alignment.CenterVertically) {
+                StatusChip(
+                    if (Connectivity.ssid != null || Ui.wifi) R.drawable.lc_wifi else R.drawable.lc_wifi_off,
+                    Connectivity.ssid ?: if (Ui.wifi) "Wi-Fi" else "No Wi-Fi",
+                    on = Ui.online,
+                )
+                StatusChip(
+                    R.drawable.lc_bluetooth,
+                    Connectivity.phone ?: if (Connectivity.bluetoothOn) "No phone" else "BT off",
+                    on = Connectivity.phone != null,
+                )
             }
         }
         Spacer(Modifier.height(10.dp))
@@ -140,8 +151,8 @@ private fun TelemetryZone() {
                 Box(Modifier.padding(bottom = 4.dp).surface(N.Elevated, 4).padding(horizontal = 8.dp, vertical = 2.dp)) {
                     Txt(if (fix) "GPS" else "NO FIX", 15, Mono, color = if (fix) N.White else N.Dim)
                 }
-                Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 140, Mono, Modifier.layer(),
-                    weight = FontWeight.ExtraBold, tracking = Track.TIGHT, tight = true)
+                // Dot-matrix only where it is big enough to read at a glance: the speed, the temperature.
+                Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 180, Dot, Modifier.layer(), tight = true)
                 Txt("KM / H ///", 16, Mono, Modifier.padding(top = 8.dp), N.Red, FontWeight.Bold, 0.3f)
             }
             Column(Modifier.width(230.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -162,7 +173,7 @@ private fun TelemetryZone() {
         Spacer(Modifier.weight(1f))
 
         Row(
-            Modifier.fillMaxWidth().topHairline().padding(top = 14.dp),
+            Modifier.fillMaxWidth().dottedLine(N.Border).padding(top = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             MapAction(R.drawable.lc_map, N.White, "Open Maps", { open(context, Shortcuts.MAPS) }) {
@@ -240,9 +251,21 @@ private fun Cruising(fix: Boolean, onClick: () -> Unit) {
             }
         }
         Column(horizontalAlignment = Alignment.End) {
-            Txt(w.tempC?.let { "$it°C" } ?: "--°C", 28, Mono, weight = FontWeight.Bold)
+            Txt(w.tempC?.let { "$it°C" } ?: "--°C", 44, Dot, tight = true)
             Txt(w.label, 15, Mono, color = N.Muted)
         }
+    }
+}
+
+/** A status pill: icon and a name, dimmed when not connected. */
+@Composable
+private fun RowScope.StatusChip(icon: Int, text: String, on: Boolean) {
+    Row(
+        Modifier.weight(1f, fill = false).surface(N.Elevated, 999).padding(horizontal = 10.dp, vertical = 4.dp),
+        Arrangement.spacedBy(6.dp), Alignment.CenterVertically,
+    ) {
+        LIcon(icon, 16, tint = if (on) N.White else N.Muted)
+        Txt(text, 15, Mono, color = if (on) N.White else N.Muted, weight = FontWeight.Bold)
     }
 }
 
@@ -298,7 +321,7 @@ private fun MediaZone() {
                     LIcon(R.drawable.lc_play_filled, 24, tint = N.Black)
                 }
                 Column {
-                    Txt("CARPLAY / ZLINK", 17, Mono, weight = FontWeight.Bold, tracking = Track.WIDE)
+                    Txt("CARPLAY / ANDROID AUTO", 17, Mono, weight = FontWeight.Bold, tracking = Track.WIDE)
                     Row(
                         Modifier.padding(top = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -441,11 +464,7 @@ private fun Progress(info: MediaInfo?, modifier: Modifier) {
     val position = info?.positionNow() ?: 0L
     val fraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
     Column(modifier.fillMaxWidth().layer()) {
-        BoxWithConstraints(Modifier.fillMaxWidth().height(12.dp), contentAlignment = Alignment.CenterStart) {
-            Box(Modifier.fillMaxWidth().height(4.dp).background(N.Elevated, CircleShape))
-            Box(Modifier.fillMaxWidth(fraction).height(4.dp).background(N.White, CircleShape))
-            RedDot(12, Modifier.offset(x = maxWidth * fraction - 6.dp))
-        }
+        DotProgress(fraction, N.White, N.Elevated, N.Red, Modifier.fillMaxWidth().padding(vertical = 3.dp))
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), Arrangement.SpaceBetween) {
             Txt(clock(position), 15, Mono, color = N.Muted)
             Txt(clock(duration), 15, Mono, color = N.Muted)
@@ -512,16 +531,8 @@ private fun DriverDock() {
         Modifier.width(100.dp).fillMaxHeight().layer().surface(N.Card, 24).padding(horizontal = 12.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.fillMaxWidth().bottomHairline().padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxWidth().dottedLine(N.Border, top = false).padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Txt(time, 22, Mono, Modifier.layer(), weight = FontWeight.Bold, tight = true)
-            Row(
-                Modifier.padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RedDot(6, color = if (Ui.online) N.White else N.Dim)
-                Txt(if (Ui.online) "ONLINE" else "OFFLINE", 15, Mono, color = N.Muted, weight = FontWeight.Bold)
-            }
         }
         Spacer(Modifier.weight(1f))
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -530,7 +541,7 @@ private fun DriverDock() {
             DockButton(R.drawable.lc_sliders_vertical, 28, false) { Ui.overlay = Overlay.QuickSettings }
         }
         Spacer(Modifier.weight(1f))
-        Box(Modifier.topHairline().padding(top = 16.dp)) {
+        Box(Modifier.dottedLine(N.Border).padding(top = 16.dp)) {
             Column(
                 Modifier.size(72.dp).touch { Ui.overlay = Overlay.Ambient }.surface(N.Black, 20),
                 Arrangement.spacedBy(4.dp, Alignment.CenterVertically), Alignment.CenterHorizontally,
