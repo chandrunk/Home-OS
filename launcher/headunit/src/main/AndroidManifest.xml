@@ -7,9 +7,10 @@
     <!-- GPS speedometer, heading and trip computer (TelemetryManager). -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <!-- Cruising-mode weather (Open-Meteo) and the ONLINE / Wi-Fi state. -->
+    <!-- Cruising-mode weather (Open-Meteo), the Wi-Fi state and its SSID (connectionInfo needs WIFI_STATE). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Bluetooth on/off in Quick Settings; Android 12+ needs no permission for that. -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
 
