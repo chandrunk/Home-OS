@@ -15,7 +15,7 @@ import androidx.compose.runtime.setValue
  *
  * Wi-Fi: the SSID needs the location permission (granted for the speedometer) on Android 8.1+.
  * Bluetooth: NWD units pair phones through their own Bluetooth module, not Android's (Android reports
- * Bluetooth off); its firmware keeps the phone in Settings.System bt_phone_name / bt_phone_status.
+ * Bluetooth off); its firmware keeps the phone in Settings.System bt_phone_name / key_bt_state.
  * Elsewhere the A2DP and headset profiles say which device is connected.
  */
 object Connectivity {
@@ -47,11 +47,11 @@ object Connectivity {
         val nwdState = Settings.System.getString(r, "key_bt_state")
         nwd = nwdState != null
         if (nwd) {
-            bluetoothOn = nwdState == "1"
-            // ponytail: bt_phone_status 0 = no phone is an inference from one reading; check against
-            // a connect/disconnect on the unit and adjust if the firmware counts differently.
-            val status = Settings.System.getString(r, "bt_phone_status")?.toIntOrNull() ?: 0
-            phone = Settings.System.getString(r, "bt_phone_name")?.takeIf { status != 0 && it.isNotBlank() }
+            // key_bt_state is the module's HFP state: 0 no phone, 1 connecting, 2 connected, 3-5 in a call.
+            // The module has no off state the launcher can read, so Bluetooth counts as on.
+            bluetoothOn = true
+            val hfp = nwdState.toIntOrNull() ?: 0
+            phone = Settings.System.getString(r, "bt_phone_name")?.takeIf { hfp >= 2 && it.isNotBlank() }
         } else {
             val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter
             bluetoothOn = runCatching { adapter?.isEnabled == true }.getOrDefault(false)

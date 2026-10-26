@@ -151,20 +151,32 @@ object MediaHub {
         pick()
     }
 
-    val hasSession: Boolean get() = current != null
+    /** NWD units: no Bluetooth session, the module's own controls stand in for it. */
+    private val nwd: Boolean get() = current == null && source.value == MediaSource.BT && NwdBluetooth.available
+
+    val hasSession: Boolean get() = current != null || nwd
 
     fun playPause() {
+        if (nwd) return NwdBluetooth.playPause()
         val c = current ?: return
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause()
         else c.transportControls.play()
     }
 
     fun next() {
+        if (nwd) return NwdBluetooth.next()
         current?.transportControls?.skipToNext()
     }
 
     fun previous() {
+        if (nwd) return NwdBluetooth.previous()
         current?.transportControls?.skipToPrevious()
+    }
+
+    /** The phone started playing over NWD Bluetooth: show it, unless another player is playing. */
+    fun bluetoothChanged(bt: MediaInfo?) {
+        if (bt?.playing == true && current?.playbackState?.state != PlaybackState.STATE_PLAYING) source.value = MediaSource.BT
+        pick()
     }
 
     private fun isBluetooth(pkg: String) = pkg in BT_PACKAGES || pkg.contains("bluetooth", ignoreCase = true)
@@ -186,7 +198,7 @@ object MediaHub {
     private fun publish() {
         val c = current
         if (c == null) {
-            info.value = null
+            info.value = if (source.value == MediaSource.BT) NwdBluetooth.info.value else null
             return
         }
         val md = c.metadata

@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         Look.load(this)
         CarHeadlightDetector.start(this)
+        NwdBluetooth.start(this)
         setContent {
             BackHandler { Ui.overlay = Overlay.None }   // Home never closes; Back only shuts overlays
             AppEffects()
