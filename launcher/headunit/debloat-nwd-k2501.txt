@@ -23,3 +23,11 @@ com.nwd.voice.analyze            # NWD voice service built on the TXZ SDK (TXZSe
 com.nwd.weiweiclient             # WeChat car-net client
 com.nwd.carad.service            # ad service
 com.nwd.carstore.service         # app store service with silent install and server-driven app replacement
+
+# Google Play Services must stay at the factory build (21.09, /system/priv-app/PrebuiltGmsCore). Play Store updated
+# it to 26.33 on 2026-09-13; that build's bindApplication parcel (529 KB) overflows Android 10's 512 KB async binder
+# buffer, so GMS never attaches and every retry leaves a zygote child stuck <pre-initialized> until the uid's process
+# limit is hit (565 stuck processes, load ~5, half the RAM). Fixed 2026-10-26 with `pm uninstall com.google.android.gms`
+# (drops the update only). Play Store updates GMS whatever its auto-update setting says, so it is disabled too;
+# enable it for a moment to install or update an app, then disable it again.
+com.android.vending              # Play Store
