@@ -38,10 +38,22 @@ fi
 
 current_home() { hu cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -n 1; }
 
+# NWD firmware (Allwinner units) starts the launcher named in this property and ignores Android's
+# Home choice; it is the firmware's own setting, so set it, and put it back on --restore.
+nwd=$(hu getprop ro.nwd.start.launcher.by.fw)
+
+set_home() {   # Android 9 and older: set-home-activity; 10+: the HOME role (first call can time out)
+  hu cmd package set-home-activity "$1" >/dev/null 2>&1 \
+    || hu cmd role add-role-holder android.app.role.HOME "${1%%/*}" >/dev/null 2>&1 \
+    || hu cmd role add-role-holder android.app.role.HOME "${1%%/*}" >/dev/null 2>&1 || true
+}
+
 if [ "${1:-}" = --restore ]; then
-  prev=$(cat "$SAVED" 2>/dev/null || true)
+  prev=$(sed -n 1p "$SAVED" 2>/dev/null || true)
+  prev_nwd=$(sed -n 2p "$SAVED" 2>/dev/null || true)
   [ -n "$prev" ] || { echo "ERROR: no saved launcher in $SAVED. Pick Home in the unit's settings." >&2; exit 1; }
-  hu cmd package set-home-activity "$prev"
+  set_home "$prev"
+  [ -n "$prev_nwd" ] && hu setprop persist.nwd.launcher.default "$prev_nwd"
   hu input keyevent KEYCODE_HOME
   echo "Home is $(current_home) again."
   exit 0
@@ -66,16 +78,20 @@ if ! hu cmd notification allow_listener "$LISTENER" 2>/dev/null; then
 fi
 
 prev=$(current_home)
+prev_nwd=$([ "$nwd" = true ] && hu getprop persist.nwd.launcher.default || true)
 case "$prev" in
   $PKG/*|android|"") ;;
-  */*) echo "$prev" > "$SAVED"; echo "Previous Home: $prev (headunit/setup_adb.sh --restore puts it back)" ;;
+  */*) printf '%s\n%s\n' "$prev" "$prev_nwd" > "$SAVED"; echo "Previous Home: $prev (headunit/setup_adb.sh --restore puts it back)" ;;
 esac
 hu am start -W -n "$HOME_ACTIVITY" | grep -E '^(Status|Error)' || true
-hu cmd package set-home-activity "$HOME_ACTIVITY"
+set_home "$HOME_ACTIVITY"
+[ "$nwd" = true ] && hu setprop persist.nwd.launcher.default "$PKG"
 hu input keyevent KEYCODE_HOME
+sleep 2
 
 now=$(current_home)
+[ "$nwd" = true ] && now=$(hu dumpsys window | grep -m1 mCurrentFocus)   # NWD resolves Home its own way
 case "$now" in
-  $PKG/*) echo "Home now resolves to $now. Installed." ;;
+  *$PKG*) echo "Home is Nothing Car OS. Installed." ;;
   *) echo "WARNING: Home resolves to ${now:-nothing}. Press Home on the unit and choose Nothing Car OS, Always." >&2 ;;
 esac

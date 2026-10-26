@@ -11,6 +11,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -33,11 +35,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -88,8 +93,9 @@ object Track {
 }
 
 /**
- * One line of text. Never wraps: anything longer than its slot ends in an ellipsis, so a long song
- * title or road name can't push the layout around. Nothing on the screen is smaller than 15 px.
+ * Text that never grows past its slot: one line by default (or [maxLines]), and anything longer ends
+ * in an ellipsis, so a long song title or road name can't push the layout around. Nothing on the
+ * screen is smaller than 15 px. Digits are tabular, so a changing speed or time doesn't jitter.
  */
 @Composable
 fun Txt(
@@ -102,6 +108,7 @@ fun Txt(
     tracking: Float = 0f,
     /** Tailwind leading-none for the big dot-matrix numbers. */
     tight: Boolean = false,
+    maxLines: Int = 1,
 ) {
     BasicText(
         text = text,
@@ -115,10 +122,10 @@ fun Txt(
             lineHeight = if (tight) 1.em else 1.3.em,
             lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
             // No ligatures, as browsers do with letter-spacing: JetBrains Mono would join "///" into one glyph.
-            fontFeatureSettings = "liga 0, calt 0",
+            fontFeatureSettings = "liga 0, calt 0, tnum",
         ),
-        maxLines = 1,
-        softWrap = false,
+        maxLines = maxLines,
+        softWrap = maxLines > 1,
         overflow = TextOverflow.Ellipsis,
     )
 }
@@ -135,9 +142,9 @@ fun LIcon(res: Int, size: Int, modifier: Modifier = Modifier, tint: Color = N.Wh
 }
 
 /** Matte surface: rounded, flat colour, 1 dp hairline. No shadows (zero-blur policy). */
-fun Modifier.surface(color: Color, radius: Int, border: Boolean = true): Modifier {
+fun Modifier.surface(color: Color, radius: Int, border: Boolean = true, borderColor: Color = N.Border): Modifier {
     val shape = if (radius >= 999) CircleShape else RoundedCornerShape(radius.dp)
-    return clip(shape).background(color).then(if (border) Modifier.border(1.dp, N.Border, shape) else Modifier)
+    return clip(shape).background(color).then(if (border) Modifier.border(1.dp, borderColor, shape) else Modifier)
 }
 
 /** The design's .touch-card: shrinks to 97% while pressed, 75 ms, no ripple. */
@@ -149,35 +156,52 @@ fun Modifier.touch(onLongClick: (() -> Unit)? = null, onClick: () -> Unit): Modi
         .combinedClickable(source, indication = null, onLongClick = onLongClick, onClick = onClick)
 }
 
-/** .bg-dot-matrix: a 1.25 px dot centred in every 20 px cell. */
-fun Modifier.dotMatrix(): Modifier = drawBehind {
-    val step = 20.dp.toPx()
+/**
+ * Its own render layer: when something inside changes (a ticking number), only this layer is
+ * re-recorded instead of the whole screen. On a weak head unit that is the difference between a
+ * 5 ms and a 60 ms frame.
+ */
+fun Modifier.layer(): Modifier = graphicsLayer()
+
+/**
+ * .bg-dot-matrix: a 1.25 px dot centred in every [cell] px cell. Drawn once into a bitmap per size and
+ * colour, then reused: redrawing ~1,100 circles on every frame kept a weak head unit CPU busy.
+ */
+fun Modifier.dotMatrix(color: Color = N.Border, cell: Int = 20): Modifier = drawWithCache {
+    val bitmap = ImageBitmap(size.width.toInt().coerceAtLeast(1), size.height.toInt().coerceAtLeast(1))
+    val canvas = androidx.compose.ui.graphics.Canvas(bitmap)
+    val paint = androidx.compose.ui.graphics.Paint().apply { this.color = color; isAntiAlias = true }
+    val step = cell.dp.toPx()
     val r = 1.25.dp.toPx()
     var y = step / 2
     while (y < size.height) {
         var x = step / 2
         while (x < size.width) {
-            drawCircle(N.Border, r, Offset(x, y))
+            canvas.drawCircle(Offset(x, y), r, paint)
             x += step
         }
         y += step
     }
+    onDrawBehind { drawImage(bitmap) }
 }
 
-fun Modifier.topHairline(): Modifier = drawBehind {
-    drawLine(N.Border, Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
+fun Modifier.topHairline(color: Color = N.Border): Modifier = drawBehind {
+    drawLine(color, Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx())
 }
 
-fun Modifier.bottomHairline(): Modifier = drawBehind {
-    drawLine(N.Border, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
+fun Modifier.bottomHairline(color: Color = N.Border): Modifier = drawBehind {
+    drawLine(color, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx())
 }
 
-/** Wall-clock time, ticking on the second. */
+/**
+ * Wall-clock time, ticking every [periodMs] on the boundary (the second, or the minute for clocks
+ * without seconds: each tick redraws, and a weak head unit notices).
+ */
 @Composable
-fun rememberNow(): Long {
-    val now by produceState(System.currentTimeMillis()) {
+fun rememberNow(periodMs: Long = 1000): Long {
+    val now by produceState(System.currentTimeMillis(), periodMs) {
         while (true) {
-            delay(1000 - System.currentTimeMillis() % 1000)
+            delay(periodMs - System.currentTimeMillis() % periodMs)
             value = System.currentTimeMillis()
         }
     }
@@ -200,3 +224,8 @@ fun ToastHost(modifier: Modifier = Modifier) {
         Txt(message, 15, Sans, Modifier.weight(1f, fill = false), N.Black, FontWeight.ExtraBold)
     }
 }
+
+/** A tap-or-drag track: [fraction] 0..1 in, the new fraction out. The skins draw their own fill on top. */
+fun Modifier.dragFraction(key: Any, onChange: (Float) -> Unit): Modifier =
+    pointerInput(key) { detectTapGestures { onChange((it.x / size.width).coerceIn(0f, 1f)) } }
+        .pointerInput(key) { detectHorizontalDragGestures { c, _ -> onChange((c.position.x / size.width).coerceIn(0f, 1f)) } }

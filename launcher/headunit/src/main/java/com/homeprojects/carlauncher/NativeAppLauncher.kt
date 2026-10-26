@@ -10,8 +10,8 @@ import java.util.Locale
  * A button that opens one of the head unit's apps. Aftermarket units ship their own radio, Bluetooth
  * phone, DSP and DVR apps under different package names, so each shortcut tries its known packages,
  * then app names containing a keyword, and the driver can long-press to pick the right app (saved).
- * The com.hcn / com.autochips names are the 8227L (MediaTek, HCN/AutoChips) units' own apps, as
- * documented by github.com/sipamungkas/headunit-flat-launcher.
+ * com.nwd: NWD firmware on Allwinner units (the K2501 this was built on). com.hcn / com.autochips:
+ * 8227L (MediaTek, HCN/AutoChips) units, as documented by github.com/sipamungkas/headunit-flat-launcher.
  */
 data class Shortcut(
     val key: String,
@@ -27,16 +27,16 @@ object Shortcuts {
         listOf("com.zjinnova.zlink", "com.zjinnova.zlink5", "com.shihab.diplay", "com.andrerinas.headunitrevived"),
         listOf("zlink", "carplay", "diplay"))
     val RADIO = Shortcut("radio", "Radio", R.drawable.lc_radio,
-        listOf("com.hcn.autoradio", "com.syu.radio", "com.ts.main.radio", "com.tw.radio", "com.android.fmradio", "com.fyt.radio",
+        listOf("com.nwd.radio", "com.hcn.autoradio", "com.syu.radio", "com.ts.main.radio", "com.tw.radio", "com.android.fmradio", "com.fyt.radio",
             "com.microntek.radio", "com.hct.radio"), listOf("radio"))
     val MAPS = Shortcut("maps", "Google Maps", R.drawable.lc_navigation,
         listOf(CarNotificationListener.MAPS), listOf("maps"))
     val YT_MUSIC = Shortcut("ytmusic", "YT Music", R.drawable.lc_disc_3,
         listOf(MediaHub.YT_MUSIC), listOf("yt music", "youtube music"))
     val BT_PHONE = Shortcut("btphone", "BT Phone", R.drawable.lc_phone,
-        listOf("com.autochips.bluetooth", "com.syu.bt", "com.ts.bt", "com.microntek.bluetooth", "com.android.dialer"), listOf("bluetooth", "phone", "dialer"))
+        listOf("com.nwd.android.phone", "com.autochips.bluetooth", "com.syu.bt", "com.ts.bt", "com.microntek.bluetooth", "com.android.dialer"), listOf("bluetooth", "phone", "dialer"))
     val DSP = Shortcut("dsp", "DSP Equalizer", R.drawable.lc_sliders_horizontal,
-        listOf("com.hcn.autoeq", "com.syu.eq", "com.syu.dsp", "com.ts.eq", "com.microntek.eqaudio"), listOf("dsp", "equalizer"))
+        listOf("com.nwd.audioset", "com.hcn.autoeq", "com.syu.eq", "com.syu.dsp", "com.ts.eq", "com.microntek.eqaudio"), listOf("dsp", "equalizer"))
     val YOUTUBE = Shortcut("youtube", "YouTube", R.drawable.lc_tv,
         listOf("com.google.android.youtube"), listOf("youtube"))
     val SPOTIFY = Shortcut("spotify", "Spotify", R.drawable.lc_music,
@@ -124,7 +124,7 @@ object NativeAppLauncher {
             if (context.packageManager.resolveActivity(intent, 0) == null) continue
             if (runCatching { context.startActivity(intent) }.isSuccess) return true
         }
-        return false
+        return launchPackage(context, "com.nwd.bt.music")   // NWD: its own BT music app
     }
 
     private val BT_MUSIC = listOf("com.autochips.bluetooth" to "com.autochips.bluetooth.BtMusicActivity")

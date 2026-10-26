@@ -31,7 +31,12 @@ is disabled; `headunit/setup_adb.sh --restore` puts the unit's own launcher back
 - **Radio, DSP, BT Phone, DVR, Zlink**: the unit's own apps. Each button tries the usual package
   names (8227L HCN/AutoChips names first), then app names; **hold any of them to pick the right app**
   (saved). The first quick tile is yours: hold it and it becomes any app.
-- **Night**: after sunset (Open-Meteo `is_day`, else 18:00-06:00) the whites dim and the nav card turns dark.
+- **Two interfaces**: Nothing (matte, monochrome, red accent) and Rivian (warm sand by day, forest
+  slate by night, yellow and green accents). Pick one in Quick Settings (Nothing) or Display (Rivian);
+  only the chosen one is drawn, and Rivian adds about 36 KB to the APK.
+- **Day / Night / Auto**: Auto follows the car's headlights, read from the ILL wire's effect on the
+  screen brightness setting or night uiMode, and sunset (Open-Meteo `is_day`, else 18:00-06:00).
+  The headlight threshold is a slider next to the live backlight reading: set it once per unit.
 - **Scaling**: the design is laid out in its 1280 x 720 pixels; other screens get the same layout
   scaled, letterboxed (1024 x 600 at 80%).
 
@@ -46,6 +51,8 @@ the parsers have unit tests, but nothing has run on a head unit yet:
 - Bluetooth audio on AutoChips units only plays while their BT Music screen is the source; with no
   session, play on the Bluetooth tab opens it.
 - Trip distance while another app is in front (Android may throttle GPS for a background app).
+- Whether this unit's headlights show up at all: many MCUs dim the backlight in hardware, where
+  Android sees neither the brightness setting nor uiMode change. Then Auto goes by sunset only.
 
 Fonts: Doto (round-dot instance), Plus Jakarta Sans, JetBrains Mono (SIL OFL, `FONT-LICENSES.txt`). Icons: Lucide
 (ISC, `ICONS-LICENSE.txt`).

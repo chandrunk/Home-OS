@@ -52,12 +52,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.homeprojects.carlauncher.AppEntry
+import com.homeprojects.carlauncher.CarHeadlightDetector
 import com.homeprojects.carlauncher.MediaHub
 import com.homeprojects.carlauncher.NativeAppLauncher
 import com.homeprojects.carlauncher.R
 import com.homeprojects.carlauncher.Shortcut
 import com.homeprojects.carlauncher.Shortcuts
 import com.homeprojects.carlauncher.ui.theme.Dot
+import com.homeprojects.carlauncher.ui.theme.Look
+import com.homeprojects.carlauncher.ui.theme.Skin
+import com.homeprojects.carlauncher.ui.theme.ThemeMode
 import com.homeprojects.carlauncher.ui.theme.Mono
 import com.homeprojects.carlauncher.ui.theme.N
 import com.homeprojects.carlauncher.ui.theme.Sans
@@ -230,9 +234,66 @@ fun QuickSettings() {
                 Ui.overlay = Overlay.Ambient
             }
         }
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ChipGroup("INTERFACE", listOf("NOTHING" to Skin.NOTHING, "RIVIAN" to Skin.RIVIAN), Look.skin) { Look.set(skin = it) }
+            ChipGroup("MODE", ThemeMode.entries.map { it.name to it }, Look.mode) { Look.set(mode = it) }
+        }
         Spacer(Modifier.weight(1f))
         VolumeBar()
+        Spacer(Modifier.height(12.dp))
+        ThresholdBar()
     }
+}
+
+/** A row of choices in a card: the chosen one is the white pill. */
+@Composable
+private fun <T> RowScope.ChipGroup(label: String, options: List<Pair<String, T>>, selected: T, onPick: (T) -> Unit) {
+    Row(
+        Modifier.weight(1f).height(64.dp).surface(N.Card, 22).padding(8.dp),
+        Arrangement.spacedBy(6.dp), Alignment.CenterVertically,
+    ) {
+        Txt(label, 15, Mono, Modifier.padding(horizontal = 12.dp), N.Muted, FontWeight.Bold, Track.WIDEST)
+        options.forEach { (name, value) ->
+            val active = value == selected
+            Box(
+                Modifier.weight(1f).fillMaxHeight().touch { onPick(value) }
+                    .then(if (active) Modifier.surface(N.White, 16, border = false) else Modifier),
+                Alignment.Center,
+            ) { Txt(name, 15, Mono, color = if (active) N.Black else N.White, weight = FontWeight.Bold) }
+        }
+    }
+}
+
+/** Icon, label, a tap-or-drag track (white fill, red thumb) and the value. */
+@Composable
+private fun Bar(icon: Int, label: String, value: String, fraction: Float, onChange: (Float) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().surface(N.Card, 22).padding(horizontal = 24.dp, vertical = 18.dp),
+        Arrangement.spacedBy(24.dp), Alignment.CenterVertically,
+    ) {
+        LIcon(icon, 32)
+        Column(Modifier.weight(1f)) {
+            Txt(label, 15, Sans, Modifier.padding(bottom = 6.dp), N.Muted, FontWeight.Bold)
+            BoxWithConstraints(Modifier.fillMaxWidth().height(28.dp).dragFraction(label, onChange), contentAlignment = Alignment.CenterStart) {
+                val f = fraction.coerceIn(0f, 1f)
+                Box(Modifier.fillMaxWidth().height(8.dp).background(N.Elevated, CircleShape))
+                Box(Modifier.fillMaxWidth(f).height(8.dp).background(N.White, CircleShape))
+                RedDot(20, Modifier.offset(x = maxWidth * f - 10.dp))
+            }
+        }
+        Txt(value, 32, Mono, weight = FontWeight.Bold)
+    }
+}
+
+/** The ILL calibration knob: night below this screen brightness. Shows the live reading to set it by. */
+@Composable
+private fun ThresholdBar() {
+    val b = CarHeadlightDetector.brightness
+    Bar(
+        R.drawable.lc_gauge,
+        "HEADLIGHT THRESHOLD • BACKLIGHT NOW ${if (b >= 0) "${b * 100 / 255}%" else "N/A"}",
+        "${Look.threshold * 100 / 255}%", Look.threshold / 255f,
+    ) { Look.set(threshold = (it * 255).roundToInt()) }
 }
 
 private fun openSettings(context: Context, action: String) {
@@ -268,33 +329,12 @@ private fun VolumeBar() {
     val audio = remember { context.getSystemService(AudioManager::class.java) }
     val max = remember { audio?.getStreamMaxVolume(AudioManager.STREAM_MUSIC)?.coerceAtLeast(1) ?: 30 }
     var volume by remember { mutableIntStateOf(audio?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0) }
-    fun set(fraction: Float) {
-        val v = (fraction.coerceIn(0f, 1f) * max).roundToInt()
+    Bar(R.drawable.lc_volume_2, "MASTER VOLUME (STREAM_MUSIC)", "$volume", volume.toFloat() / max) { f ->
+        val v = (f * max).roundToInt()
         if (v != volume) {
             volume = v
             runCatching { audio?.setStreamVolume(AudioManager.STREAM_MUSIC, v, 0) }
         }
-    }
-    Row(
-        Modifier.fillMaxWidth().surface(N.Card, 22).padding(24.dp),
-        Arrangement.spacedBy(24.dp), Alignment.CenterVertically,
-    ) {
-        LIcon(R.drawable.lc_volume_2, 32)
-        Column(Modifier.weight(1f)) {
-            Txt("MASTER VOLUME (STREAM_MUSIC)", 15, Sans, Modifier.padding(bottom = 10.dp), N.Muted, FontWeight.Bold)
-            BoxWithConstraints(
-                Modifier.fillMaxWidth().height(28.dp)
-                    .pointerInput(max) { detectTapGestures { set(it.x / size.width) } }
-                    .pointerInput(max) { detectHorizontalDragGestures { change, _ -> set(change.position.x / size.width) } },
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                val fraction = volume.toFloat() / max
-                Box(Modifier.fillMaxWidth().height(8.dp).background(N.Elevated, CircleShape))
-                Box(Modifier.fillMaxWidth(fraction).height(8.dp).background(N.White, CircleShape))
-                RedDot(20, Modifier.offset(x = maxWidth * fraction - 10.dp))
-            }
-        }
-        Txt("$volume", 32, Mono, weight = FontWeight.Bold)
     }
 }
 
@@ -302,7 +342,7 @@ private fun VolumeBar() {
 
 @Composable
 fun AmbientClock() {
-    val now = rememberNow()
+    val now = rememberNow(60_000)
     val info by MediaHub.info.collectAsState()
     Column(
         Modifier.fillMaxSize().background(N.AmbientBg)

@@ -103,7 +103,7 @@ data class MediaInfo(
  */
 object MediaHub {
     const val YT_MUSIC = "com.google.android.apps.youtube.music"
-    private val BT_PACKAGES = setOf("com.android.bluetooth", "com.autochips.bluetooth", "com.syu.bt", "com.ts.bt", "com.microntek.bluetooth")
+    private val BT_PACKAGES = setOf("com.android.bluetooth", "com.nwd.bt.music", "com.autochips.bluetooth", "com.syu.bt", "com.ts.bt", "com.microntek.bluetooth")
 
     val source = MutableStateFlow(MediaSource.YT)
     val info = MutableStateFlow<MediaInfo?>(null)

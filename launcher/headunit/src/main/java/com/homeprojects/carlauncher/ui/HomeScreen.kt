@@ -73,16 +73,6 @@ import java.util.Locale
 /** The whole 1280 x 720 screen: telemetry canvas, media hub, right-hand driver dock, overlays. */
 @Composable
 fun HomeScreen() {
-    val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        while (true) {
-            val t = TelemetryManager.state.value
-            WeatherRepo.refreshIfDue(context, t.lat, t.lon)
-            val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-            Night.on = WeatherRepo.state.value.isDay?.not() ?: (hour < 6 || hour >= 18)
-            delay(60_000)
-        }
-    }
     Box(Modifier.size(DESIGN_W.dp, DESIGN_H.dp).background(N.Black)) {
         Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             TelemetryZone()
@@ -122,7 +112,7 @@ private fun TelemetryZone() {
     val fix = t.hasFix()
     val shape = RoundedCornerShape(24.dp)
     Column(
-        Modifier.width(664.dp).fillMaxHeight().clip(shape).background(N.Card).dotMatrix()
+        Modifier.width(664.dp).fillMaxHeight().layer().clip(shape).background(N.Card).dotMatrix()
             .border(1.dp, N.Border, shape).padding(22.dp)
     ) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -150,7 +140,7 @@ private fun TelemetryZone() {
                 Box(Modifier.padding(bottom = 4.dp).surface(N.Elevated, 4).padding(horizontal = 8.dp, vertical = 2.dp)) {
                     Txt(if (fix) "GPS" else "NO FIX", 15, Mono, color = if (fix) N.White else N.Dim)
                 }
-                Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 140, Mono,
+                Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 140, Mono, Modifier.layer(),
                     weight = FontWeight.ExtraBold, tracking = Track.TIGHT, tight = true)
                 Txt("KM / H ///", 16, Mono, Modifier.padding(top = 8.dp), N.Red, FontWeight.Bold, 0.3f)
             }
@@ -258,7 +248,7 @@ private fun Cruising(fix: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun StatCard(label: String, value: String, onLongClick: (() -> Unit)? = null, trailing: @Composable () -> Unit) {
-    var mod = Modifier.fillMaxWidth()
+    var mod = Modifier.fillMaxWidth().layer()
     if (onLongClick != null) mod = mod.touch(onLongClick = onLongClick) {}
     Row(
         mod.surface(N.Black.copy(alpha = 0.9f), 16).padding(14.dp),
@@ -292,7 +282,7 @@ private fun RowScope.MapAction(icon: Int, tint: androidx.compose.ui.graphics.Col
 @Composable
 private fun MediaZone() {
     val context = LocalContext.current
-    Column(Modifier.width(460.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.width(460.dp).fillMaxHeight().layer(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             Modifier.fillMaxWidth().height(88.dp)
                 .touch(onLongClick = { pick(Shortcuts.ZLINK) }) { open(context, Shortcuts.ZLINK) }
@@ -333,12 +323,10 @@ private fun MediaZone() {
     }
 }
 
+// Static, not pulsing: an endless animation redraws the whole screen every frame (a full CPU core on
+// a weak head unit), and blinking things pull the driver's eye.
 @Composable
-private fun PulsingDot() {
-    val pulse = rememberInfiniteTransition(label = "pulse")
-    val a by pulse.animateFloat(1f, 0.5f, infiniteRepeatable(tween(1000), RepeatMode.Reverse), label = "alpha")
-    RedDot(8, Modifier.alpha(a), N.Muted)
-}
+private fun PulsingDot() = RedDot(8, color = N.Muted)
 
 @Composable
 private fun MediaHubCard() {
@@ -452,7 +440,7 @@ private fun Progress(info: MediaInfo?, modifier: Modifier) {
     val duration = info?.durationMs ?: 0L
     val position = info?.positionNow() ?: 0L
     val fraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-    Column(modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth().layer()) {
         BoxWithConstraints(Modifier.fillMaxWidth().height(12.dp), contentAlignment = Alignment.CenterStart) {
             Box(Modifier.fillMaxWidth().height(4.dp).background(N.Elevated, CircleShape))
             Box(Modifier.fillMaxWidth(fraction).height(4.dp).background(N.White, CircleShape))
@@ -465,12 +453,12 @@ private fun Progress(info: MediaInfo?, modifier: Modifier) {
     }
 }
 
-private fun clock(ms: Long): String {
+internal fun clock(ms: Long): String {
     val s = ms / 1000
     return String.format(Locale.ROOT, "%02d:%02d", s / 60, s % 60)
 }
 
-private fun appLabel(context: Context, pkg: String): String = runCatching {
+internal fun appLabel(context: Context, pkg: String): String = runCatching {
     val pm = context.packageManager
     pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
 }.getOrDefault(pkg.substringAfterLast('.'))
@@ -518,14 +506,14 @@ private fun RowScope.QuickTile(label: String, icon: @Composable () -> Unit,
 
 @Composable
 private fun DriverDock() {
-    val now = rememberNow()
+    val now = rememberNow(60_000)
     val time = remember(now / 60_000) { SimpleDateFormat("HH:mm", Locale.ROOT).format(Date(now)) }
     Column(
-        Modifier.width(100.dp).fillMaxHeight().surface(N.Card, 24).padding(horizontal = 12.dp, vertical = 20.dp),
+        Modifier.width(100.dp).fillMaxHeight().layer().surface(N.Card, 24).padding(horizontal = 12.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Column(Modifier.fillMaxWidth().bottomHairline().padding(bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Txt(time, 22, Mono, weight = FontWeight.Bold, tight = true)
+            Txt(time, 22, Mono, Modifier.layer(), weight = FontWeight.Bold, tight = true)
             Row(
                 Modifier.padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),

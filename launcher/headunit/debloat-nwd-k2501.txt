@@ -1,0 +1,25 @@
+# Allwinner K2501 head unit (ro.hardware sun50iw9p1, platform mercury), NWD firmware
+# K2501_UP_S212251.20210609, Android 10 (API 29), 2 GB RAM, 1024x600 @160dpi, MCU V6.0 CAN0017.
+# Disabled 2026-10-25 for Nothing Car OS: ~110 MB and a steady CPU share freed (MemAvailable 260 -> 475 MB).
+#
+# Apply:   for p in $(grep -vE '^\s*(#|$)' headunit/debloat-nwd-k2501.txt | sed 's/ .*//'); do adb shell pm disable-user --user 0 $p; done
+# Undo:    for p in $(grep -vE '^\s*(#|$)' headunit/debloat-nwd-k2501.txt | sed 's/ .*//'); do adb shell pm enable $p; done
+# Everything is DISABLED, not uninstalled.
+#
+# KEEP (load-bearing on NWD): com.nwd.kernel, com.nwd.kernel.setting (MCU, ILL backlight), com.bt.bc03 (Bluetooth),
+# com.nwd.radio(.service), com.nwd.backcar (reverse camera), com.nwd.can.setting, com.nwd.can.help (CAN, MCU update),
+# com.android.launcher (NWD tools: lock screen, steering-wheel learning, reboot) and the camera provider service.
+#
+# Home on NWD: the firmware starts the launcher named in persist.nwd.launcher.default and ignores Android's Home
+# role; headunit/setup_adb.sh sets it and --restore puts com.android.launcher back.
+
+# TXZ voice assistant: the biggest steady CPU user (10 h 54 min CPU in one uptime), ~110 MB
+com.txznet.txz
+com.txznet.aipal
+com.txznet.smartadapter
+com.nwd.voice.analyze            # NWD voice service built on the TXZ SDK (TXZService)
+
+# NWD cloud
+com.nwd.weiweiclient             # WeChat car-net client
+com.nwd.carad.service            # ad service
+com.nwd.carstore.service         # app store service with silent install and server-driven app replacement

@@ -8,7 +8,11 @@ import com.android.resources.ScreenOrientation
 import com.homeprojects.carlauncher.ui.HomeScreen
 import com.homeprojects.carlauncher.ui.Overlay
 import com.homeprojects.carlauncher.ui.Ui
+import com.homeprojects.carlauncher.ui.rivian.RivianHome
+import com.homeprojects.carlauncher.ui.theme.Look
 import com.homeprojects.carlauncher.ui.theme.Night
+import com.homeprojects.carlauncher.ui.theme.Skin
+import com.homeprojects.carlauncher.ui.theme.ThemeMode
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -30,7 +34,7 @@ class ScreensTest {
 
     @Before
     fun driving() {
-        WeatherRepo.state.value = Weather("South Jakarta, ID", 31, "DAY / CLEAR", isDay = true)
+        WeatherRepo.state.value = Weather("South Jakarta, ID", 31, "DAY / CLEAR", isDay = true, condition = "CLEAR")
         MediaHub.info.value = MediaInfo(
             packageName = MediaHub.YT_MUSIC, title = "Evaluasi", artist = "Hindia • Menari Dengan Bayangan",
             art = null, durationMs = 195_000, positionMs = 114_000, positionAt = 0, speed = 1f, playing = false,
@@ -40,6 +44,7 @@ class ScreensTest {
         Ui.wifi = true
         Ui.overlay = Overlay.None
         Night.on = false
+        Look.set(skin = Skin.NOTHING, mode = ThemeMode.AUTO)
         Ui.toast = null
         NavHub.state.value = NavInfo("250m", "TURN LEFT", "Jl. Jend. Sudirman (Semanggi)", 14)
     }
@@ -51,7 +56,12 @@ class ScreensTest {
             speedKmh = 68, bearing = 15f, tripStartAt = now - (42 * 60 + 18) * 1000L,
             distanceM = 24_800.0, lastFixAt = maxOf(now, 1L), lat = -6.2088, lon = 106.8456,
         )
-        ScaledToDesign { HomeScreen() }
+        ScaledToDesign {
+            when (Look.skin) {
+                Skin.NOTHING -> HomeScreen()
+                Skin.RIVIAN -> RivianHome()
+            }
+        }
     }
 
     @Test
@@ -114,6 +124,65 @@ class ScreensTest {
     @Test
     fun ambient() {
         Ui.overlay = Overlay.Ambient
+        shoot()
+    }
+
+    // ---- Rivian ----
+
+    private fun rivian(night: Boolean) {
+        Look.set(skin = Skin.RIVIAN)
+        Night.on = night
+    }
+
+    @Test
+    fun rivianDay() {
+        rivian(night = false)
+        shoot()
+    }
+
+    @Test
+    fun rivianNight() {
+        rivian(night = true)
+        shoot()
+    }
+
+    @Test
+    fun rivianCruisingDay() {
+        rivian(night = false)
+        NavHub.clear()
+        shoot()
+    }
+
+    @Test
+    fun rivianDisplay() {
+        rivian(night = false)
+        Ui.overlay = Overlay.QuickSettings
+        shoot()
+    }
+
+    @Test
+    fun rivianDrawerNight() {
+        rivian(night = true)
+        Ui.overlay = Overlay.Drawer
+        shoot()
+    }
+
+    @Test
+    fun rivianCalm() {
+        rivian(night = true)
+        Ui.overlay = Overlay.Ambient
+        shoot()
+    }
+
+    @Test
+    fun rivianLongTextDay() {
+        rivian(night = false)
+        NavHub.state.value = NavInfo("12.5km", "SLIGHT RIGHT",
+            "Jl. Letnan Jenderal S. Parman Kav. 28 (Slipi, arah Tomang dan Grogol Petamburan)", 125)
+        MediaHub.info.value = MediaHub.info.value!!.copy(
+            title = "Sebuah Lagu Dengan Judul Yang Sangat Panjang Sekali Hingga Tidak Muat Di Layar (Live Version)",
+            artist = "Nama Penyanyi Yang Panjang feat. Kolaborator Lain • Album Kompilasi Terbaik Sepanjang Masa",
+        )
         shoot()
     }
 }

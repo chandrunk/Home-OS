@@ -17,6 +17,8 @@ data class Weather(
     val tempC: Int? = null,
     val label: String = "",
     val isDay: Boolean? = null,
+    /** CLEAR, CLOUDY, FOG, DRIZZLE, RAIN, SNOW, STORM, FAIR; each skin words it its own way. */
+    val condition: String = "",
 )
 
 /** Open-Meteo (no key) for the weather, Android's Geocoder for the place name; every 30 minutes. */
@@ -56,6 +58,7 @@ object WeatherRepo {
                     tempC = Math.round(current.getDouble("temperature_2m")).toInt(),
                     label = (if (day) "DAY" else "NIGHT") + " / " + condition(current.optInt("weather_code", 0)),
                     isDay = day,
+                    condition = condition(current.optInt("weather_code", 0)),
                 )
                 lastAt = SystemClock.elapsedRealtime()
             } catch (e: Exception) {
