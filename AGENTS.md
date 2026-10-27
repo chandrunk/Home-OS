@@ -5,11 +5,6 @@ this launcher as the home screen, with pictures of places behind it; on LG webOS
 AI model, large or small. Follow it in order, and read [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 before you improvise a fix.
 
-> ⚡ **Quick 1-Line User Trigger**:
-> When a user prompts you with:
-> `install ni dekat tv rumah saya: https://github.com/aqmangge/glass-tv-home`
-> (or `install this on my home tv: https://github.com/aqmangge/glass-tv-home`), they want you to automate the full deployment. Ask for their TV IP (if not auto-discovered) and their location in Malaysia (e.g. Putrajaya, Cheras, Shah Alam, Melaka, JB, Penang, Kuantan, Kuching, KK). Then connect over ADB, backup, debloat, install the prebuilt APK from `release/glass-tv-home.apk` (or build), configure the haze & prayer zone broadcast, and verify with a screenshot.
-
 ## First: check the model, before anything else
 
 As soon as you know the TV's or box's brand and model (the person names it, or it is on a photo or sticker),
@@ -17,7 +12,7 @@ check it **before** connecting, asking for an IP address, downloading tools or t
 
 1. Look it up in [docs/DEVICES.md](docs/DEVICES.md) and the table below.
 2. If it is **not supported** (Samsung Tizen, Hisense or Toshiba VIDAA, Roku, Vizio, Panasonic My Home Screen,
-   Apple TV, an older unifi IPTV box), or only partly (Fire TV and the debloat-only models: no Glass TV Home;
+   Apple TV), or only partly (Fire TV and the debloat-only models: no Glass TV Home;
    LG webOS: only an app you open), say so **first**, in plain words, before any setup step. For example:
    "Your Samsung QN90B runs Tizen, so Glass TV can't run on it. A Google TV stick in its HDMI port gives you
    all of it." Then stop, unless they choose the box or the partial option.
@@ -209,10 +204,6 @@ A theme is a folder with `config.json` (and optional `wallpaper.jpg` or `wallpap
   until the TV restarts. Ask before restarting it.
 - Point the screensaver at the launcher's clock before disabling the stock screensaver:
   `settings put secure screensaver_components com.gathin.tvhome/.ClockDream`.
-- **Location / Jerebu & Waktu Solat**: Ask the person where in Malaysia they are located (e.g. Putrajaya, Cheras, Shah Alam, Melaka, JB, Penang, Kuantan, Kuching, KK). Set it via:
-  `adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --es query "<LOCATION>"`
-  This automatically calibrates both the official Department of Environment (JAS) APIMS haze / IPU ground station and JAKIM prayer times.
-- **Check**: Home restarts within a few seconds with the new settings.
 - **Cache cleaning**: Glass TV clears the TV's app caches itself every 15 days ([docs/cache-clean.md](docs/cache-clean.md)).
   It needs the TV's permission once. With the person at the TV, run
   `touch /sdcard/Android/data/com.gathin.tvhome/files/clean-now`, press Home and wait 20 seconds: the TV asks

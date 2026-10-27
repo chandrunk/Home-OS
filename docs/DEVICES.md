@@ -19,7 +19,7 @@ Also run with Glass TV by others, for the parts they checked:
 | Device | System | Checked | Report |
 |---|---|---|---|
 | Toshiba TV with MIC (Hisense-made, `songshan`, MediaTek) | Google TV, Android 11 | Installed from Windows, became Home, Input button; the accessibility helpers are cleared on every boot on this firmware | [#4](https://github.com/cocombee/glass-tv/issues/4) |
-| Sharp 4T-C65FJ1X 4K Google TV (MTC, `expo`, MediaTek MSD9602PA), Malaysia | Google TV, Android 14 | Installed from Windows, became Home after setupwraith was disabled; dock, Input button, HDMI, mic and Cast checked on the day | [`sharp-4t-c65fj1x`](../examples/sharp-4t-c65fj1x/) |
+| Sharp 4T-C65FJ1X 4K Google TV (MTC, `expo`, MediaTek MSD9602PA) | Google TV, Android 14 | Installed from Windows, became Home after setupwraith was disabled; dock, Input button, HDMI, mic and Cast checked on the day | [`sharp-4t-c65fj1x`](../examples/sharp-4t-c65fj1x/) |
 
 ## 2. Tested with the original launcher
 
@@ -99,7 +99,6 @@ Android TV or Google TV 8 or newer, so nothing stands in the way, but no one has
 | Device | System | Notes |
 |---|---|---|
 | Google TV Streamer, Xiaomi TV Stick 4K, onn. and other Google TV sticks and boxes | Google TV 10+ | Google's setup app can take Home after the install; the install script handles it |
-| unifi Plus Box (TM, Malaysia; Skyworth HP40A3, ZTE B866V2K) | Android TV 9+ | Certified Android TV. Runs standard APK without root; does NOT void TM warranty. Keep TM's unifi TV app to retain live channels. 100% reversible via standard uninstall. |
 | Other Sony, TCL, Philips, Hisense (Android models), Sharp, Toshiba (Android models) TVs | Android TV / Google TV 8+ | Use the nearest example list as a starting point, never as is |
 
 ## 5. Not supported
@@ -109,7 +108,6 @@ Android TV or Google TV 8 or newer, so nothing stands in the way, but no one has
 | Samsung (Tizen) | No Android apps, and no app can replace its Home or Home button | A Google TV or Android TV box in an HDMI port |
 | LG (webOS) | Same | A box; or the webOS app you open yourself, a preview in [`webos/`](../webos/README.md) |
 | Hisense / Toshiba VIDAA, Roku, Vizio SmartCast, Panasonic My Home Screen, Apple TV | Same | A box |
-| Older unifi IPTV set-top boxes (before the Plus Box) | Not Android TV | A box |
 
 With a box, the TV becomes the screen and Glass TV is the whole experience. Turn on HDMI-CEC on the TV (Anynet+
 on Samsung, SIMPLINK on LG, "CEC Control" on Hisense) so the TV's remote drives the box.

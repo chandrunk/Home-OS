@@ -191,7 +191,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- Bawah Jam: Weather plus Haze API (clickable & focusable pill to open WeatherActivity) -->
+            <!-- Bawah Jam: Weather and air quality (clickable & focusable pill to open WeatherActivity) -->
             <TextView
                 android:id="@+id/weatherAirQuality"
                 android:layout_width="wrap_content"

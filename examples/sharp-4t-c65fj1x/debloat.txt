@@ -1,4 +1,4 @@
-# Sharp 4T-C65FJ1X 4K Google TV (built by MTC, device expo, MediaTek MSD9602PA), Malaysia
+# Sharp 4T-C65FJ1X 4K Google TV (built by MTC, device expo, MediaTek MSD9602PA)
 # Google TV 14 (SDK 34), firmware UKNV.260716.001, 1.9 GB RAM
 # Fingerprint: Sharp/MSD9602PA_Sharp/expo:14/UKNV.260716.001/15877852:user/release-keys
 # Built from a package scan of this TV plus the nearest lists (hitachi-65qledsm20, same MTC

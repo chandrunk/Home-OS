@@ -118,7 +118,7 @@ SANYO · Sharp · Skyworth · Thomson · Toshiba Fire TV · Vu · Stellamore and
 | RCA AI PONT SA (Changhong, redwood, ISDB92RC; also sold as realme 40-inch) | Android 14 |
 | Redmi TV (MiTV-ANTL0, starwars) | Android 5.1.1 (not Android TV) |
 | SANYO ATV R2 (SCBC, Realtek RTD285O) | Android TV 9 |
-| Sharp 4T-C65FJ1X 4K Google TV (MTC, expo, MediaTek MSD9602PA), Malaysia | Google TV 14 |
+| Sharp 4T-C65FJ1X 4K Google TV (MTC, expo, MediaTek MSD9602PA) | Google TV 14 |
 | Skyworth SWTV-21AE (sunnyvale, MediaTek) | Android TV 14 |
 | Sony BRAVIA 4K AE2 (BRAVIA_AE2, MediaTek MT5897), North America | Google TV 14 |
 | Sony BRAVIA 4K GB (BRAVIA_ATV2_EU, BRAVIA_ATV2) | Android TV 9 |

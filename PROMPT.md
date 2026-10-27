@@ -1,23 +1,5 @@
-# The Prompt / Arahan AI
+# The prompt
 
-### ⚡ 1-Line Quick Prompt (Paling Ringkas)
-Users can simply paste this single prompt into any AI coding agent (Google Antigravity, Claude Code, Cursor):
-
-```text
-install ni dekat tv rumah saya: https://github.com/aqmangge/glass-tv-home
-```
-*(English alias: `install this on my home tv: https://github.com/aqmangge/glass-tv-home`)*
-
-When an AI assistant receives this prompt:
-1. Ask the user for their TV IP address (or scan the local Wi-Fi subnet with `adb connect <ip>:5555`).
-2. Ask the user for their location in Malaysia (e.g. Putrajaya, Cheras, Shah Alam, Melaka, JB, Penang, Kuantan, Kuching, KK).
-3. Connect over Wi-Fi, create a system backup, debloat telemetry & ads, configure AdGuard DNS, and install the official APK from `release/glass-tv-home.apk` (or build with `./gradlew assembleRelease`).
-4. Set the user's location via `adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --es query "<LOCATION>"`.
-5. Take a screenshot from the TV and verify everything is working.
-
----
-
-### 📋 Full Detailed Prompt (Detailed Alternative)
 Paste this into Claude Code (or another coding assistant with shell access) on a computer that is
 on the same Wi-Fi as the TV. Works on Android TV / Google TV sets (Xiaomi, TCL, Hisense, Sony,
 OnePlus, Realme, Nvidia Shield and most others). It will not work on Samsung Tizen, LG webOS or
@@ -107,8 +89,6 @@ Launcher
   listing the HDMI ports, AV and Live TV, switching via the TV input framework.
 - Make D-pad navigation deterministic: Up/Down move exactly one row, Up from the dock goes to the top
   bar, the ends of the top bar don't fall through to tiles. Remember the last focused tile.
-- Ask for user location: Ask me where in Malaysia I am located (e.g. Putrajaya, Cheras, Shah Alam, Melaka, JB, Penang, Kuantan, Kuching, KK) so you can configure my local Department of Environment (JAS) haze / IPU monitoring station and JAKIM prayer times zone automatically using:
-  `adb shell am broadcast -a com.gathin.tvhome.SET_LOCATION -p com.gathin.tvhome --es query "<LOCATION>"`
 - Keep it light: the TV has about 1 GB of RAM. No blur, no video, no network polling.
 
 Verify

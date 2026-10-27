@@ -123,8 +123,6 @@ final class OnlineWallpapers {
                     "Dark Rainy Asphalt", "Glittering light streaks bouncing off wet night streets", "Urban"),
             new WallpaperItem("https://images.unsplash.com/photo-1516214104703-d870798883c5?auto=format&fit=crop&w=3840&h=2160&q=80",
                     "Dark Foggy Pines", "Serene evergreen trees veiled in thick atmospheric fog", "Forest"),
-            new WallpaperItem("https://images.unsplash.com/photo-1596422846543-75c6fc197f07?auto=format&fit=crop&w=3840&h=2160&q=80",
-                    "Petronas Twin Towers Night", "Illuminated skyscraper spires soaring into the Kuala Lumpur night sky", "Skyscraper"),
             new WallpaperItem("https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=3840&h=2160&q=80",
                     "Manhattan Skyline Twilight", "New York City highrise towers lit against the deep evening dusk", "Skyscraper"),
             new WallpaperItem("https://images.unsplash.com/photo-1477959858617-67f30bc75b82?auto=format&fit=crop&w=3840&h=2160&q=80",

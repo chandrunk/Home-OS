@@ -1994,10 +1994,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             showWallpaperDialog();
         });
 
-        // Row 2: Location API Haze
+        // Row 2: weather city
         addInputRow(rows, close, R.drawable.ic_location, "Lokasi Cuaca", -1, () -> {
             SoundEffects.playSelect();
-            showHazeLocationDialog();
+            showLocationDialog();
         });
 
         // Row 4: Sound Effects
@@ -2625,7 +2625,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         builder.show();
     }
 
-    private void showHazeLocationDialog() {
+    private void showLocationDialog() {
         final List<AppLocationManager.Station> stations = AppLocationManager.getPresetStations();
         String currentId = AppLocationManager.getStationId(this);
         int selectedIndex = 0;

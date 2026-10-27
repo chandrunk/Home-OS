@@ -356,7 +356,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 android:gravity="center"
-                android:text="Updated 7:40 PM  •  API: Jabatan Alam Sekitar (APIMS), reading at 7:00 PM  •  Weather and US AQI: Open-Meteo model"
+                android:text="Diperbarui --:--  •  Cuaca &amp; kualitas udara: Open-Meteo"
                 android:textColor="#64748B"
                 android:textSize="10sp"
                 android:fontFamily="@font/outfit"
