@@ -1,4 +1,4 @@
-# Launcher rumah
+# Home OS
 
 Dua launcher Android untuk perangkat di rumah: **Glass TV** untuk Android TV, dan **Nothing Car OS** untuk
 head unit mobil. Proyek hobi, dipakai sendiri; tidak resmi dan tidak berafiliasi dengan merek mana pun.
