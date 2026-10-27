@@ -41,6 +41,15 @@ speedometer dan trip dari GPS, navigasi Google Maps, media YT Music dan Bluetoot
 pengemudi di kanan. Diuji di unit NWD (Allwinner K2501, Android 10), termasuk musik Bluetooth lewat modul
 NWD-nya sendiri.
 
+| | |
+|---|---|
+| ![Skin Nothing, siang, sedang navigasi](launcher/headunit/src/test/snapshots/images/com.homeprojects.carlauncher_ScreensTest_navigating.png) | ![Skin Nothing, malam](launcher/headunit/src/test/snapshots/images/com.homeprojects.carlauncher_ScreensTest_navigatingAtNight.png) |
+| *Nothing, siang* | *Nothing, malam (lampu mobil menyala)* |
+| ![Skin Rivian, siang](launcher/headunit/src/test/snapshots/images/com.homeprojects.carlauncher_ScreensTest_rivianDay.png) | ![Skin Rivian, malam](launcher/headunit/src/test/snapshots/images/com.homeprojects.carlauncher_ScreensTest_rivianNight.png) |
+| *Rivian, siang* | *Rivian, malam* |
+| ![Semua aplikasi](launcher/headunit/src/test/snapshots/images/com.homeprojects.carlauncher_ScreensTest_allApps.png) | ![Jam ambient](launcher/headunit/src/test/snapshots/images/com.homeprojects.carlauncher_ScreensTest_ambient.png) |
+| *Semua aplikasi* | *Ambient* |
+
 Cara install, debloat, dan catatan firmware NWD ada di [launcher/headunit/README.md](launcher/headunit/README.md)
 dan [launcher/headunit/debloat-nwd-k2501.txt](launcher/headunit/debloat-nwd-k2501.txt).
 
