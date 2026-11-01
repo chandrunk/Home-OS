@@ -12,6 +12,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -113,13 +114,13 @@ private fun TelemetryZone() {
     val fix = t.hasFix()
     val shape = RoundedCornerShape(24.dp)
     Column(
-        Modifier.width(664.dp).fillMaxHeight().layer().clip(shape).background(N.Card).dotMatrix()
+        Modifier.width(444.dp).fillMaxHeight().layer().clip(shape).background(N.Card).dotMatrix()
             .border(1.dp, N.Border, shape).padding(22.dp)
     ) {
         Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(12.dp), Alignment.CenterVertically) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 RedDot(8, color = N.Muted)
-                Txt("NOTHING CAR OS", 15, Mono, color = N.Muted, tracking = Track.WIDEST)
+                Txt("NOTHING", 15, Mono, color = N.Muted, tracking = Track.WIDEST)
             }
             // Which network and which phone, where the eye already goes for status. Long names end in "…".
             Row(Modifier.weight(1f), Arrangement.spacedBy(8.dp, Alignment.End), Alignment.CenterVertically) {
@@ -143,7 +144,7 @@ private fun TelemetryZone() {
 
         Spacer(Modifier.weight(1f))
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 8.dp),
             Arrangement.SpaceBetween, Alignment.CenterVertically,
         ) {
             Column {
@@ -152,10 +153,11 @@ private fun TelemetryZone() {
                     Txt(if (fix) "GPS" else "NO FIX", 15, Mono, color = if (fix) N.White else N.Dim)
                 }
                 // Dot-matrix only where it is big enough to read at a glance: the speed, the temperature.
-                Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 180, Dot, Modifier.layer(), tight = true)
+                // Small next to the song: the car's own cluster already shows the speed.
+                Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 120, Dot, Modifier.layer(), tight = true)
                 Txt("KM / H ///", 16, Mono, Modifier.padding(top = 8.dp), N.Red, FontWeight.Bold, 0.3f)
             }
-            Column(Modifier.width(230.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.width(206.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard("HEADING", t.bearing?.let(TripMath::heading) ?: "-- / ---°") {
                     Box(Modifier.size(36.dp).background(N.Elevated, CircleShape), Alignment.Center) {
                         LIcon(R.drawable.lc_navigation_2, 18, Modifier.rotate(t.bearing ?: 0f), N.White)
@@ -191,68 +193,62 @@ private fun ActiveNav(nav: NavInfo, onClick: () -> Unit) {
     val arrow by NavHub.arrow.collectAsState()
     // White by day; at night a dark card, so the brightest thing in the cabin isn't the screen.
     val night = Night.on
-    Row(
-        Modifier.fillMaxWidth().height(116.dp).touch(onClick = onClick)
+    Column(
+        Modifier.fillMaxWidth().height(NAV_CARD_H.dp).touch(onClick = onClick)
             .surface(if (night) N.Elevated else N.White, 20, border = night).padding(16.dp),
-        Arrangement.spacedBy(16.dp), Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(84.dp).background(N.Black, RoundedCornerShape(16.dp)), Alignment.Center) {
-            val a = arrow
-            if (a != null) Image(a.asImageBitmap(), null, Modifier.size(56.dp), colorFilter = ColorFilter.tint(N.White))
-            else LIcon(
-                if (nav.maneuver?.contains("LEFT") == true) R.drawable.lc_corner_up_left else R.drawable.lc_navigation_2,
-                44,
-            )
-        }
-        // Takes what the arrow and the ETA leave, so a long road name ends in "…" instead of
-        // pushing the ETA off the card.
-        Column(Modifier.weight(1f).padding(start = 2.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Txt(nav.distance ?: "--", 36, Sans, Modifier.alignByBaseline(), if (night) N.White else N.Black,
-                    FontWeight.ExtraBold, Track.TIGHT, tight = true)
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(64.dp).background(N.Black, RoundedCornerShape(14.dp)), Alignment.Center) {
+                val a = arrow
+                if (a != null) Image(a.asImageBitmap(), null, Modifier.size(44.dp), colorFilter = ColorFilter.tint(N.White))
+                else LIcon(
+                    if (nav.maneuver?.contains("LEFT") == true) R.drawable.lc_corner_up_left else R.drawable.lc_navigation_2,
+                    36,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Txt(nav.distance ?: "--", 36, Sans, color = if (night) N.White else N.Black,
+                    weight = FontWeight.ExtraBold, tracking = Track.TIGHT, tight = true)
                 nav.maneuver?.let {
-                    Txt("• $it", 19, Sans, Modifier.alignByBaseline(), N.Red, FontWeight.ExtraBold, Track.WIDE)
+                    Txt("• $it", 17, Sans, Modifier.padding(top = 4.dp), N.Red, FontWeight.ExtraBold, Track.WIDE)
                 }
             }
-            Txt(nav.road.orEmpty(), 20, Sans, Modifier.padding(top = 6.dp), if (night) N.Muted else N.Ink, FontWeight.Bold)
+            Column(
+                Modifier.surface(N.Black, 14, border = false).padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Txt("ETA", 15, Mono, color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
+                Txt(nav.etaMin?.let { "$it MIN" } ?: "-- MIN", 18, Mono, Modifier.padding(top = 2.dp), weight = FontWeight.Bold)
+            }
         }
-        Column(
-            Modifier.padding(end = 8.dp).surface(N.Black, 14, border = false).padding(horizontal = 18.dp, vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Txt("ETA", 15, Mono, color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
-            Txt(nav.etaMin?.let { "$it MIN" } ?: "-- MIN", 20, Mono, Modifier.padding(top = 2.dp), weight = FontWeight.Bold)
-        }
+        Txt(nav.road.orEmpty(), 20, Sans, Modifier.padding(top = 10.dp), if (night) N.Muted else N.Ink, FontWeight.Bold)
     }
 }
+
+/** Navigation and cruising cards are the same height, so the speed below doesn't jump. */
+private const val NAV_CARD_H = 140
 
 @Composable
 private fun Cruising(fix: Boolean, onClick: () -> Unit) {
     val w by WeatherRepo.state.collectAsState()
-    Row(
-        Modifier.fillMaxWidth().height(116.dp).touch(onClick = onClick).surface(N.Elevated, 20).padding(20.dp),
-        Arrangement.SpaceBetween, Alignment.CenterVertically,
+    Column(
+        Modifier.fillMaxWidth().height(NAV_CARD_H.dp).touch(onClick = onClick).surface(N.Elevated, 20).padding(16.dp),
     ) {
-        Row(
-            Modifier.weight(1f).padding(end = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(Modifier.size(72.dp).surface(N.Card, 16), Alignment.Center) {
-                LIcon(R.drawable.lc_compass, 36)
-            }
-            Column {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RedDot(7, color = N.Muted)
-                    Txt(if (fix) "CRUISING MODE / GPS LOCKED" else "CRUISING MODE / NO GPS", 15, Mono,
-                        color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
-                }
-                Txt(w.place, 24, Sans, Modifier.padding(top = 4.dp), weight = FontWeight.ExtraBold)
-            }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            RedDot(7, color = N.Muted)
+            Txt(if (fix) "CRUISING / GPS LOCKED" else "CRUISING / NO GPS", 15, Mono,
+                color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
         }
-        Column(horizontalAlignment = Alignment.End) {
-            Txt(w.tempC?.let { "$it°C" } ?: "--°C", 44, Dot, tight = true)
-            Txt(w.label, 15, Mono, color = N.Muted)
+        Spacer(Modifier.weight(1f))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(64.dp).surface(N.Card, 16), Alignment.Center) {
+                LIcon(R.drawable.lc_compass, 32)
+            }
+            Txt(w.place, 22, Sans, Modifier.weight(1f), weight = FontWeight.ExtraBold, maxLines = 2)
+            Column(horizontalAlignment = Alignment.End) {
+                Txt(w.tempC?.let { "$it°C" } ?: "--°C", 40, Dot, tight = true)
+                Txt(w.label, 15, Mono, color = N.Muted)
+            }
         }
     }
 }
@@ -305,9 +301,9 @@ private fun RowScope.MapAction(icon: Int, tint: androidx.compose.ui.graphics.Col
 @Composable
 private fun MediaZone() {
     val context = LocalContext.current
-    Column(Modifier.width(460.dp).fillMaxHeight().layer(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(Modifier.width(680.dp).fillMaxHeight().layer(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
-            Modifier.fillMaxWidth().height(88.dp)
+            Modifier.fillMaxWidth().height(72.dp)
                 .touch(onLongClick = { pick(Shortcuts.ZLINK) }) { open(context, Shortcuts.ZLINK) }
                 .surface(N.Card, 22).padding(horizontal = 20.dp),
             Arrangement.SpaceBetween, Alignment.CenterVertically,
@@ -317,8 +313,8 @@ private fun MediaZone() {
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Box(Modifier.size(52.dp).background(N.White, CircleShape), Alignment.Center) {
-                    LIcon(R.drawable.lc_play_filled, 24, tint = N.Black)
+                Box(Modifier.size(44.dp).background(N.White, CircleShape), Alignment.Center) {
+                    LIcon(R.drawable.lc_play_filled, 22, tint = N.Black)
                 }
                 Column {
                     Txt("CARPLAY / ANDROID AUTO", 17, Mono, weight = FontWeight.Bold, tracking = Track.WIDE)
@@ -337,7 +333,7 @@ private fun MediaZone() {
             }
         }
         MediaHubCard()
-        Row(Modifier.fillMaxWidth().height(168.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             SlotTile(Shortcuts.SLOT)
             QuickApp(Shortcuts.DSP, "DSP / EQ", R.drawable.lc_sliders_horizontal, N.White)
             QuickApp(Shortcuts.YOUTUBE, "YouTube", R.drawable.lc_play, N.White)
@@ -357,7 +353,7 @@ private fun MediaHubCard() {
     val source by MediaHub.source.collectAsState()
     val info by MediaHub.info.collectAsState()
     val listening by CarNotificationListener.connected.collectAsState()
-    Column(Modifier.fillMaxWidth().height(408.dp).surface(N.Card, 24).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().height(472.dp).surface(N.Card, 24).padding(18.dp)) {
         Row(Modifier.fillMaxWidth().height(54.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             SourceTab("YT Music", R.drawable.lc_disc_3, source == MediaSource.YT) { MediaHub.select(MediaSource.YT) }
             SourceTab("Bluetooth", R.drawable.lc_bluetooth, source == MediaSource.BT) { MediaHub.select(MediaSource.BT) }
@@ -372,10 +368,8 @@ private fun MediaHubCard() {
                 LIcon(R.drawable.lc_arrow_up_right, 14, tint = N.Muted)
             }
         }
-        Spacer(Modifier.weight(1f))
-        NowPlaying(info, source, listening)
-        Spacer(Modifier.weight(1f))
-        Row(Modifier.fillMaxWidth().height(132.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        NowPlaying(info, source, listening, Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().height(104.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Box(
                 Modifier.weight(1f).fillMaxHeight().touch { MediaHub.previous() }.surface(N.Elevated, 18),
                 Alignment.Center,
@@ -416,7 +410,7 @@ private fun RowScope.SourceTab(label: String, icon: Int, active: Boolean, onClic
 }
 
 @Composable
-private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean) {
+private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean, modifier: Modifier) {
     val context = LocalContext.current
     val sourceLabel = when {
         source == MediaSource.BT -> "BLUETOOTH A2DP // PHONE AUDIO"
@@ -431,20 +425,21 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
         else -> "Play music on your phone"
     }
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 8.dp)
+        modifier.fillMaxWidth().padding(vertical = 14.dp)
             .touch {   // the song opens its app; the buttons below only control it
                 if (!listening && source == MediaSource.YT) openListenerSettings(context)
                 else if (!NativeAppLauncher.openPlayer(context, source, info)) Ui.toast("APP NOT FOUND")
             },
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalArrangement = Arrangement.spacedBy(22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(116.dp).surface(N.Elevated, 20), Alignment.Center) {
+        // The art is the picture on an otherwise plain screen: as big as the card allows.
+        Box(Modifier.fillMaxHeight().aspectRatio(1f).surface(N.Elevated, 20), Alignment.Center) {
             val art = info?.art
             if (art != null) {
                 Image(art.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             } else {
-                Box(Modifier.size(44.dp).border(2.dp, N.Muted, CircleShape), Alignment.Center) { RedDot(12, color = N.Muted) }
+                Box(Modifier.size(72.dp).border(2.dp, N.Muted, CircleShape), Alignment.Center) { RedDot(16, color = N.Muted) }
             }
         }
         Column(Modifier.weight(1f)) {
@@ -452,8 +447,8 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
                 RedDot(6, color = N.Muted)
                 Txt(sourceLabel, 15, Mono, color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
             }
-            Txt(title, 26, Sans, Modifier.padding(top = 6.dp), weight = FontWeight.ExtraBold)
-            Txt(subtitle, 17, Sans, Modifier.padding(top = 2.dp), N.Muted, FontWeight.SemiBold)
+            Txt(title, 30, Sans, Modifier.padding(top = 8.dp), weight = FontWeight.ExtraBold)
+            Txt(subtitle, 18, Sans, Modifier.padding(top = 2.dp), N.Muted, FontWeight.SemiBold)
             // Bluetooth without a timeline (NWD's module sends none): no bar rather than one stuck at 00:00.
             if (source != MediaSource.BT || (info?.durationMs ?: 0L) > 0) Progress(info, Modifier.padding(top = 18.dp))
         }
