@@ -34,6 +34,8 @@ final class Glider extends View {
     static final int DARK = 0;
     /** Between apps: a pane of glass, the same as the pills and the tray. */
     static final int GLASS = 1;
+    /** dp the glass stands out round a selected tile, so the ring around it can be seen. */
+    static final float RING = 5f;
 
     private static final class Edge extends FloatPropertyCompat<Glider> {
         private final int which;
@@ -63,6 +65,7 @@ final class Glider extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Backdrop.Fill glass = new Backdrop.Fill();
     private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final GlassRim rim;
     private final android.graphics.RectF shape = new android.graphics.RectF();
     private int style = DARK;
@@ -100,7 +103,11 @@ final class Glider extends View {
         this.reducedMotion = reducedMotion;
         float density = context.getResources().getDisplayMetrics().density;
         veil.setColor(0x14FFFFFF);
-        rim = new GlassRim(1.5f * density, 0xD9FFFFFF, 0x1AFFFFFF);
+        // Solid all round and thick enough to see from the sofa; the thin dark line outside it keeps
+        // it apart from a bright banner or photo.
+        rim = new GlassRim(3f * density, 0xF2FFFFFF, 0xF2FFFFFF);
+        edge.setStyle(Paint.Style.STROKE);
+        edge.setStrokeWidth(1f * density);
         shadowBlur = 22f * density;
         shadowDrop = 8f * density;
         Backdrop.watch(this);
@@ -294,6 +301,12 @@ final class Glider extends View {
         glass.draw(canvas, canvasOwner, shape, r, opacity);
         veil.setAlpha(Math.round(0x14 * opacity));
         canvas.drawRoundRect(shape, r, r, veil);
+        float e = edge.getStrokeWidth() / 2f;
+        shape.inset(e, e);
+        edge.setColor(Math.round(0x66 * opacity) << 24);
+        canvas.drawRoundRect(shape, r - e, r - e, edge);
+        shape.inset(e, e);
+        r -= 2 * e;
         float half = rim.paint.getStrokeWidth() / 2f;
         shape.inset(half, half);
         rim.fit(shape);
