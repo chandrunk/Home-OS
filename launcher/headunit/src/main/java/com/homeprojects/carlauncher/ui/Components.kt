@@ -270,7 +270,7 @@ fun DotProgress(fraction: Float, lit: Color, unlit: Color, head: Color, modifier
 private val BAR_LEVELS = intArrayOf(1, 3, 2, 4, 2, 3, 1, 4, 3, 2)
 
 /**
- * Four columns of dots stepping at 5 fps while a song plays; one flat row of dots when it doesn't.
+ * Four columns of dots stepping twice a second while a song plays; one flat row of dots when it doesn't.
  * Not driven by the audio (the head unit gives no levels), only a sign of life. Nothing runs while
  * paused, and while Home is hidden Compose draws no frames.
  */
@@ -278,7 +278,7 @@ private val BAR_LEVELS = intArrayOf(1, 3, 2, 4, 2, 3, 1, 4, 3, 2)
 fun PlayingBars(playing: Boolean, on: Color, off: Color, modifier: Modifier = Modifier) {
     val frame by produceState(0, playing) {
         while (playing) {
-            delay(200)
+            delay(500)   // each frame redraws the whole screen on a weak head unit: keep it slow
             value++
         }
     }
