@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,6 +62,7 @@ import com.homeprojects.carlauncher.TelemetryManager
 import com.homeprojects.carlauncher.TripMath
 import com.homeprojects.carlauncher.WeatherRepo
 import com.homeprojects.carlauncher.ui.LIcon
+import com.homeprojects.carlauncher.ui.PlayingBars
 import com.homeprojects.carlauncher.ui.Overlay
 import com.homeprojects.carlauncher.ui.Track
 import com.homeprojects.carlauncher.ui.Txt
@@ -359,8 +362,8 @@ private fun MediaCard() {
             Modifier.fillMaxWidth().height(54.dp).rCard(p.elevated, 18, p).padding(5.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Segment("YT Music", source == MediaSource.YT) { MediaHub.select(MediaSource.YT) }
-            Segment("Bluetooth", source == MediaSource.BT) { MediaHub.select(MediaSource.BT) }
+            Segment("YT Music", source == MediaSource.YT, info?.playing == true) { MediaHub.select(MediaSource.YT) }
+            Segment("Bluetooth", source == MediaSource.BT, info?.playing == true) { MediaHub.select(MediaSource.BT) }
             Row(
                 Modifier.weight(1f).fillMaxHeight()
                     .touch(onLongClick = { pick(Shortcuts.RADIO) }) { open(context, Shortcuts.RADIO) }
@@ -378,55 +381,83 @@ private fun MediaCard() {
             else -> appLabel(context, info!!.packageName).uppercase(Locale.ROOT)
         }
         val m = info
-        Row(
-            Modifier.fillMaxWidth().weight(1f).padding(vertical = 14.dp)
-                .touch {   // the song opens its app; the buttons below only control it
-                    if (!listening && source == MediaSource.YT) openListenerSettings(context)
-                    else if (!NativeAppLauncher.openPlayer(context, source, m)) Ui.toast("App not found.")
-                },
-            Arrangement.spacedBy(22.dp), Alignment.CenterVertically,
-        ) {
+        val playing = m?.playing == true
+        // The song (art and words) opens its app; the buttons only control it.
+        val openApp = {
+            if (!listening && source == MediaSource.YT) openListenerSettings(context)
+            else if (!NativeAppLauncher.openPlayer(context, source, m)) Ui.toast("App not found.")
+        }
+        Row(Modifier.fillMaxWidth().weight(1f).padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
             // The art is the picture on an otherwise plain screen: as big as the card allows.
-            Box(Modifier.fillMaxHeight().aspectRatio(1f).clip(RoundedCornerShape(22.dp)).rCard(p.elevated, 22, p), Alignment.Center) {
+            Box(
+                Modifier.fillMaxHeight().aspectRatio(1f).touch(onClick = openApp).clip(RoundedCornerShape(22.dp))
+                    .rCard(p.elevated, 22, p),
+                Alignment.Center,
+            ) {
                 val art = m?.art
                 if (art != null) Image(art.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 else if (source == MediaSource.BT) BluetoothArt(m?.title)
                 else LIcon(R.drawable.lc_disc_3, 72, tint = p.accent)
+                if (m != null && !playing) PausedVeil()
             }
-            Column(Modifier.weight(1f)) {
-                Txt(sourceLabel, 15, Sans, color = p.accent, weight = FontWeight.ExtraBold, tracking = Track.WIDER)
-                Txt(m?.title?.ifBlank { null } ?: "Nothing playing", 30, Sans, Modifier.padding(top = 6.dp), p.text, FontWeight.ExtraBold)
-                Txt(
-                    when {
-                        m != null -> m.artist
-                        !listening -> "Tap to allow notification access"
-                        source == MediaSource.YT -> "Tap to open YT Music"
-                        else -> "Play music on your phone"
-                    },
-                    18, Sans, Modifier.padding(top = 2.dp), p.text2, FontWeight.SemiBold,
-                )
-                if (source != MediaSource.BT || (m?.durationMs ?: 0L) > 0) Progress(m, Modifier.padding(top = 18.dp))
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                Column(Modifier.fillMaxWidth().weight(1f).touch(onClick = openApp), verticalArrangement = Arrangement.Center) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        PlayingBars(playing, p.accent, p.muted)
+                        Txt(sourceLabel, 15, Sans, color = p.accent, weight = FontWeight.ExtraBold, tracking = Track.WIDER)
+                    }
+                    Txt(m?.title?.ifBlank { null } ?: "Nothing playing", 28, Sans, Modifier.padding(top = 6.dp), p.text,
+                        FontWeight.ExtraBold, maxLines = 2)
+                    Txt(
+                        when {
+                            m != null -> m.artist
+                            !listening -> "Tap to allow notification access"
+                            source == MediaSource.YT -> "Tap to open YT Music"
+                            else -> "Play music on your phone"
+                        },
+                        17, Sans, Modifier.padding(top = 2.dp), p.text2, FontWeight.SemiBold,
+                    )
+                    if (source != MediaSource.BT || (m?.durationMs ?: 0L) > 0) Progress(m, Modifier.padding(top = 12.dp))
+                }
+                // On the driver's side (right-hand drive): play on top, the most pressed, then previous and next.
+                Box(
+                    Modifier.fillMaxWidth().height(110.dp).touch {
+                        when {
+                            MediaHub.hasSession -> MediaHub.playPause()
+                            source == MediaSource.YT -> if (!MediaHub.resume(context)) Ui.toast("YT Music isn't installed.")
+                            else -> Ui.toast("No Bluetooth audio. Play on your phone.")
+                        }
+                    }.then(if (playing) Modifier.surface(Rv.Yellow, 20, border = false) else Modifier.rCard(p.elevated, 20, p)),
+                    Alignment.Center,
+                ) {
+                    // Yellow only while a song plays: the accent means "playing" across the card.
+                    LIcon(if (playing) R.drawable.lc_pause_filled else R.drawable.lc_play_filled, 48,
+                        tint = if (playing) Rv.OnYellow else p.text)
+                }
+                Row(Modifier.fillMaxWidth().height(84.dp).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.weight(1f).fillMaxHeight().touch { MediaHub.previous() }.rCard(p.elevated, 20, p), Alignment.Center) {
+                        LIcon(R.drawable.lc_skip_back_filled, 32, tint = p.text)
+                    }
+                    Box(Modifier.weight(1f).fillMaxHeight().touch { MediaHub.next() }.rCard(p.elevated, 20, p), Alignment.Center) {
+                        LIcon(R.drawable.lc_skip_forward_filled, 32, tint = p.text)
+                    }
+                }
             }
         }
-        Row(Modifier.fillMaxWidth().height(104.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.weight(1f).fillMaxHeight().touch { MediaHub.previous() }.rCard(p.elevated, 20, p), Alignment.Center) {
-                LIcon(R.drawable.lc_skip_back_filled, 36, tint = p.text)
-            }
-            Box(
-                Modifier.weight(1f).fillMaxHeight().touch {
-                    when {
-                        MediaHub.hasSession -> MediaHub.playPause()
-                        source == MediaSource.YT -> if (!MediaHub.resume(context)) Ui.toast("YT Music isn't installed.")
-                        else -> Ui.toast("No Bluetooth audio. Play on your phone.")
-                    }
-                }.surface(Rv.Yellow, 20, border = false),
-                Alignment.Center,
-            ) {
-                LIcon(if (m?.playing == true) R.drawable.lc_pause_filled else R.drawable.lc_play_filled, 44, tint = Rv.OnYellow)
-            }
-            Box(Modifier.weight(1f).fillMaxHeight().touch { MediaHub.next() }.rCard(p.elevated, 20, p), Alignment.Center) {
-                LIcon(R.drawable.lc_skip_forward_filled, 36, tint = p.text)
-            }
+    }
+}
+
+/** Over the art while paused: the cover dims and says so, readable from the corner of the eye. */
+@Composable
+private fun PausedVeil() {
+    val p = LocalR.current
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f)), Alignment.Center) {
+        Row(
+            Modifier.rCard(p.card, 999, p).padding(horizontal = 20.dp, vertical = 10.dp),
+            Arrangement.spacedBy(10.dp), Alignment.CenterVertically,
+        ) {
+            LIcon(R.drawable.lc_pause_filled, 18, tint = p.text)
+            Txt("Paused", 18, Sans, color = p.text, weight = FontWeight.ExtraBold)
         }
     }
 }
@@ -440,8 +471,11 @@ private fun BluetoothArt(title: String?) {
     val p = LocalR.current
     val initial = title?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()
     Box(Modifier.fillMaxSize().padding(16.dp)) {
-        if (initial != null) Txt("$initial", 120, Sans, Modifier.align(Alignment.Center), p.accent, FontWeight.ExtraBold, tight = true)
-        else LIcon(R.drawable.lc_bluetooth, 64, Modifier.align(Alignment.Center), p.accent)
+        // Fades only when the song changes: nothing runs between tracks.
+        Crossfade(initial, Modifier.align(Alignment.Center), label = "bt-initial") { c ->
+            if (c != null) Txt("$c", 120, Sans, color = p.accent, weight = FontWeight.ExtraBold, tight = true)
+            else LIcon(R.drawable.lc_bluetooth, 64, tint = p.accent)
+        }
         Row(Modifier.align(Alignment.BottomStart), Arrangement.spacedBy(6.dp), Alignment.CenterVertically) {
             LIcon(R.drawable.lc_bluetooth, 16, tint = p.text2)
             Txt(Connectivity.phone ?: "Bluetooth", 15, Sans, color = p.text2, weight = FontWeight.Bold)
@@ -450,14 +484,14 @@ private fun BluetoothArt(title: String?) {
 }
 
 @Composable
-private fun RowScope.Segment(label: String, active: Boolean, onClick: () -> Unit) {
+private fun RowScope.Segment(label: String, active: Boolean, playing: Boolean, onClick: () -> Unit) {
     val p = LocalR.current
     Row(
         Modifier.weight(1f).fillMaxHeight().touch(onClick = onClick)
             .then(if (active) Modifier.rCard(p.card, 13, p, border = false) else Modifier),
         Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally), Alignment.CenterVertically,
     ) {
-        if (active) Box(Modifier.size(7.dp).background(p.accent, CircleShape))
+        if (active) Box(Modifier.size(8.dp).background(if (playing) p.accent else p.muted, CircleShape))
         Txt(label, 15, Sans, color = if (active) p.text else p.text2, weight = if (active) FontWeight.ExtraBold else FontWeight.Bold)
     }
 }
@@ -470,8 +504,12 @@ private fun Progress(info: MediaInfo?, modifier: Modifier) {
     val position = info?.positionNow() ?: 0L
     val fraction = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
     Column(modifier.fillMaxWidth().layer()) {
-        Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(p.elevated)) {
-            Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(p.accent, CircleShape))
+        BoxWithConstraints(Modifier.fillMaxWidth().height(14.dp), contentAlignment = Alignment.CenterStart) {
+            Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(p.elevated)) {
+                Box(Modifier.fillMaxWidth(fraction).fillMaxHeight().background(p.accent, CircleShape))
+            }
+            // The playhead: the one moving thing that says the song plays.
+            Box(Modifier.offset(x = (maxWidth - 14.dp) * fraction).size(14.dp).background(p.accent, CircleShape))
         }
         Row(Modifier.fillMaxWidth().padding(top = 6.dp), Arrangement.SpaceBetween) {
             Txt(clock(position), 15, Mono, color = p.text2, weight = FontWeight.Bold)

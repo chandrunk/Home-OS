@@ -8,6 +8,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -39,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.asImageBitmap
@@ -347,10 +349,11 @@ private fun MediaHubCard() {
     val source by MediaHub.source.collectAsState()
     val info by MediaHub.info.collectAsState()
     val listening by CarNotificationListener.connected.collectAsState()
+    val playing = info?.playing == true
     Column(Modifier.fillMaxWidth().height(472.dp).surface(N.Card, 24).padding(18.dp)) {
         Row(Modifier.fillMaxWidth().height(54.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SourceTab("YT Music", R.drawable.lc_disc_3, source == MediaSource.YT) { MediaHub.select(MediaSource.YT) }
-            SourceTab("Bluetooth", R.drawable.lc_bluetooth, source == MediaSource.BT) { MediaHub.select(MediaSource.BT) }
+            SourceTab("YT Music", R.drawable.lc_disc_3, source == MediaSource.YT, playing) { MediaHub.select(MediaSource.YT) }
+            SourceTab("Bluetooth", R.drawable.lc_bluetooth, source == MediaSource.BT, playing) { MediaHub.select(MediaSource.BT) }
             Row(
                 Modifier.weight(1f).fillMaxHeight()
                     .touch(onLongClick = { pick(Shortcuts.RADIO) }) { open(context, Shortcuts.RADIO) }
@@ -362,34 +365,38 @@ private fun MediaHubCard() {
                 LIcon(R.drawable.lc_arrow_up_right, 14, tint = N.Muted)
             }
         }
-        NowPlaying(info, source, listening, Modifier.weight(1f))
-        Row(Modifier.fillMaxWidth().height(104.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        NowPlaying(info, source, listening, Modifier.weight(1f)) {
+            // On the driver's side (right-hand drive): play on top, the most pressed, then previous and next.
             Box(
-                Modifier.weight(1f).fillMaxHeight().touch { MediaHub.previous() }.surface(N.Elevated, 18),
-                Alignment.Center,
-            ) { LIcon(R.drawable.lc_skip_back_filled, 36) }
-            Box(
-                Modifier.weight(1f).fillMaxHeight().touch {
+                Modifier.fillMaxWidth().height(110.dp).touch {
                     when {
                         MediaHub.hasSession -> MediaHub.playPause()
                         source == MediaSource.YT -> if (!MediaHub.resume(context)) Ui.toast("YT MUSIC NOT INSTALLED")
                         else -> Ui.toast("NO BLUETOOTH AUDIO // PLAY ON YOUR PHONE")
                     }
-                }.surface(N.White, 18, border = false),
+                }.surface(if (playing) N.Red else N.White, 18, border = false),
                 Alignment.Center,
             ) {
-                LIcon(if (info?.playing == true) R.drawable.lc_pause_filled else R.drawable.lc_play_filled, 44, tint = N.Black)
+                // Red only while a song plays: the accent means "playing" across the card.
+                LIcon(if (playing) R.drawable.lc_pause_filled else R.drawable.lc_play_filled, 48,
+                    tint = if (playing) Color.White else N.Black)
             }
-            Box(
-                Modifier.weight(1f).fillMaxHeight().touch { MediaHub.next() }.surface(N.Elevated, 18),
-                Alignment.Center,
-            ) { LIcon(R.drawable.lc_skip_forward_filled, 36) }
+            Row(Modifier.fillMaxWidth().height(84.dp).padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().touch { MediaHub.previous() }.surface(N.Elevated, 18),
+                    Alignment.Center,
+                ) { LIcon(R.drawable.lc_skip_back_filled, 32) }
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().touch { MediaHub.next() }.surface(N.Elevated, 18),
+                    Alignment.Center,
+                ) { LIcon(R.drawable.lc_skip_forward_filled, 32) }
+            }
         }
     }
 }
 
 @Composable
-private fun RowScope.SourceTab(label: String, icon: Int, active: Boolean, onClick: () -> Unit) {
+private fun RowScope.SourceTab(label: String, icon: Int, active: Boolean, playing: Boolean, onClick: () -> Unit) {
     val fg = if (active) N.Black else N.Muted
     Box(
         Modifier.weight(1f).fillMaxHeight().touch(onClick = onClick)
@@ -397,6 +404,7 @@ private fun RowScope.SourceTab(label: String, icon: Int, active: Boolean, onClic
         Alignment.Center,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (active && playing) RedDot(8)
             LIcon(icon, 18, tint = fg)
             Txt(label, 15, Sans, color = fg, weight = if (active) FontWeight.ExtraBold else FontWeight.Bold)
         }
@@ -404,12 +412,13 @@ private fun RowScope.SourceTab(label: String, icon: Int, active: Boolean, onClic
 }
 
 @Composable
-private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean, modifier: Modifier) {
+private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean, modifier: Modifier,
+                       controls: @Composable () -> Unit) {
     val context = LocalContext.current
     val sourceLabel = when {
-        source == MediaSource.BT -> "BLUETOOTH A2DP // PHONE AUDIO"
-        info == null || info.packageName == MediaHub.YT_MUSIC -> "YOUTUBE MUSIC // STREAM"
-        else -> appLabel(context, info.packageName).uppercase(Locale.ROOT) + " // STREAM"
+        source == MediaSource.BT -> "BLUETOOTH"
+        info == null || info.packageName == MediaHub.YT_MUSIC -> "YOUTUBE MUSIC"
+        else -> appLabel(context, info.packageName).uppercase(Locale.ROOT)
     }
     val title = info?.title?.ifBlank { null } ?: "Nothing playing"
     val subtitle = when {
@@ -418,17 +427,14 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
         source == MediaSource.YT -> "Tap to open YT Music"
         else -> "Play music on your phone"
     }
-    Row(
-        modifier.fillMaxWidth().padding(vertical = 14.dp)
-            .touch {   // the song opens its app; the buttons below only control it
-                if (!listening && source == MediaSource.YT) openListenerSettings(context)
-                else if (!NativeAppLauncher.openPlayer(context, source, info)) Ui.toast("APP NOT FOUND")
-            },
-        horizontalArrangement = Arrangement.spacedBy(22.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    // The song (art and words) opens its app; the buttons only control it.
+    val openApp = {
+        if (!listening && source == MediaSource.YT) openListenerSettings(context)
+        else if (!NativeAppLauncher.openPlayer(context, source, info)) Ui.toast("APP NOT FOUND")
+    }
+    Row(modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
         // The art is the picture on an otherwise plain screen: as big as the card allows.
-        Box(Modifier.fillMaxHeight().aspectRatio(1f).surface(N.Elevated, 20), Alignment.Center) {
+        Box(Modifier.fillMaxHeight().aspectRatio(1f).touch(onClick = openApp).clip(RoundedCornerShape(20.dp)).surface(N.Elevated, 20), Alignment.Center) {
             val art = info?.art
             if (art != null) {
                 Image(art.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
@@ -437,16 +443,34 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
             } else {
                 Box(Modifier.size(72.dp).border(2.dp, N.Muted, CircleShape), Alignment.Center) { RedDot(16, color = N.Muted) }
             }
+            if (info != null && !info.playing) PausedVeil()
         }
-        Column(Modifier.weight(1f)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                RedDot(6, color = N.Muted)
-                Txt(sourceLabel, 15, Mono, color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
+        Column(Modifier.weight(1f).fillMaxHeight()) {
+            Column(Modifier.fillMaxWidth().weight(1f).touch(onClick = openApp), verticalArrangement = Arrangement.Center) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PlayingBars(info?.playing == true, N.Red, N.Dim)
+                    Txt(sourceLabel, 15, Mono, color = N.Muted, weight = FontWeight.Bold, tracking = Track.WIDEST)
+                }
+                Txt(title, 28, Sans, Modifier.padding(top = 6.dp), weight = FontWeight.ExtraBold, maxLines = 2)
+                Txt(subtitle, 17, Sans, Modifier.padding(top = 2.dp), N.Muted, FontWeight.SemiBold)
+                // Bluetooth without a timeline (NWD's module sends none): no bar rather than one stuck at 00:00.
+                if (source != MediaSource.BT || (info?.durationMs ?: 0L) > 0) Progress(info, Modifier.padding(top = 12.dp))
             }
-            Txt(title, 30, Sans, Modifier.padding(top = 8.dp), weight = FontWeight.ExtraBold)
-            Txt(subtitle, 18, Sans, Modifier.padding(top = 2.dp), N.Muted, FontWeight.SemiBold)
-            // Bluetooth without a timeline (NWD's module sends none): no bar rather than one stuck at 00:00.
-            if (source != MediaSource.BT || (info?.durationMs ?: 0L) > 0) Progress(info, Modifier.padding(top = 18.dp))
+            controls()
+        }
+    }
+}
+
+/** Over the art while paused: the cover dims and says so, readable from the corner of the eye. */
+@Composable
+private fun PausedVeil() {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), Alignment.Center) {
+        Row(
+            Modifier.surface(N.Card, 999).padding(horizontal = 20.dp, vertical = 10.dp),
+            Arrangement.spacedBy(10.dp), Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(10.dp).background(N.Red, RoundedCornerShape(2.dp)))
+            Txt("PAUSED", 18, Mono, weight = FontWeight.ExtraBold, tracking = Track.WIDEST)
         }
     }
 }
@@ -459,8 +483,11 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
 private fun BluetoothArt(title: String?) {
     val initial = title?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()
     Box(Modifier.fillMaxSize().dotMatrix().padding(16.dp)) {
-        if (initial != null) Txt("$initial", 120, Dot, Modifier.align(Alignment.Center), tight = true)
-        else LIcon(R.drawable.lc_bluetooth, 64, Modifier.align(Alignment.Center), N.Muted)
+        // Fades only when the song changes: nothing runs between tracks.
+        Crossfade(initial, Modifier.align(Alignment.Center), label = "bt-initial") { c ->
+            if (c != null) Txt("$c", 120, Dot, tight = true)
+            else LIcon(R.drawable.lc_bluetooth, 64, tint = N.Muted)
+        }
         Row(
             Modifier.align(Alignment.BottomStart),
             horizontalArrangement = Arrangement.spacedBy(6.dp),

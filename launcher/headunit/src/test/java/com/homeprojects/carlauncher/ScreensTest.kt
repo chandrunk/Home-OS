@@ -129,6 +129,13 @@ class ScreensTest {
     }
 
     @Test
+    fun playingDay() {
+        NavHub.clear()
+        MediaHub.info.value = MediaHub.info.value!!.copy(playing = true)
+        shoot()
+    }
+
+    @Test
     fun allApps() {
         Ui.overlay = Overlay.Drawer
         shoot()
@@ -169,6 +176,13 @@ class ScreensTest {
     fun rivianBluetoothDay() {
         rivian(night = false)
         bluetooth()
+        shoot()
+    }
+
+    @Test
+    fun rivianPlayingNight() {
+        rivian(night = true)
+        MediaHub.info.value = MediaHub.info.value!!.copy(playing = true)
         shoot()
     }
 

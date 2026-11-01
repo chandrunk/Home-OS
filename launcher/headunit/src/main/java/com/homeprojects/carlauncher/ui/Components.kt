@@ -261,7 +261,35 @@ fun DotProgress(fraction: Float, lit: Color, unlit: Color, head: Color, modifier
                 i < on -> lit
                 else -> unlit
             }
-            drawCircle(c, d / 2, Offset(i * step + d / 2, d / 2))
+            // The playhead is drawn twice the size: the one moving thing that says the song plays.
+            drawCircle(c, if (c == head) d else d / 2, Offset(i * step + d / 2, d / 2))
+        }
+    }
+}
+
+private val BAR_LEVELS = intArrayOf(1, 3, 2, 4, 2, 3, 1, 4, 3, 2)
+
+/**
+ * Four columns of dots stepping at 5 fps while a song plays; one flat row of dots when it doesn't.
+ * Not driven by the audio (the head unit gives no levels), only a sign of life. Nothing runs while
+ * paused, and while Home is hidden Compose draws no frames.
+ */
+@Composable
+fun PlayingBars(playing: Boolean, on: Color, off: Color, modifier: Modifier = Modifier) {
+    val frame by produceState(0, playing) {
+        while (playing) {
+            delay(200)
+            value++
+        }
+    }
+    Canvas(modifier.size(25.dp)) {
+        val d = 4.dp.toPx()
+        val step = 7.dp.toPx()
+        for (c in 0 until 4) {
+            val h = if (playing) BAR_LEVELS[(frame + c * 3) % BAR_LEVELS.size] else 1
+            for (r in 0 until h) {
+                drawCircle(if (playing) on else off, d / 2, Offset(c * step + d / 2, size.height - d / 2 - r * step))
+            }
         }
     }
 }
