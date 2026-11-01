@@ -39,6 +39,7 @@ class ScreensTest {
             packageName = MediaHub.YT_MUSIC, title = "Evaluasi", artist = "Hindia • Menari Dengan Bayangan",
             art = null, durationMs = 195_000, positionMs = 114_000, positionAt = 0, speed = 1f, playing = false,
         )
+        MediaHub.source.value = MediaSource.YT
         CarNotificationListener.connected.value = true
         Ui.online = true
         Ui.wifi = true
@@ -111,6 +112,22 @@ class ScreensTest {
         shoot()
     }
 
+    /** NWD's Bluetooth module: title and artist, no art, no timeline. */
+    private fun bluetooth() {
+        MediaHub.source.value = MediaSource.BT
+        MediaHub.info.value = MediaInfo(
+            packageName = "com.bt.bc03", title = "Rumah ke Rumah", artist = "Hindia",
+            art = null, durationMs = 0, positionMs = 0, positionAt = 0, speed = 0f, playing = true,
+        )
+    }
+
+    @Test
+    fun bluetoothNight() {
+        bluetooth()
+        Night.on = true
+        shoot()
+    }
+
     @Test
     fun allApps() {
         Ui.overlay = Overlay.Drawer
@@ -145,6 +162,13 @@ class ScreensTest {
     @Test
     fun rivianNight() {
         rivian(night = true)
+        shoot()
+    }
+
+    @Test
+    fun rivianBluetoothDay() {
+        rivian(night = false)
+        bluetooth()
         shoot()
     }
 

@@ -117,24 +117,18 @@ private fun TelemetryZone() {
         Modifier.width(444.dp).fillMaxHeight().layer().clip(shape).background(N.Card).dotMatrix()
             .border(1.dp, N.Border, shape).padding(22.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(12.dp), Alignment.CenterVertically) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                RedDot(8, color = N.Muted)
-                Txt("NOTHING", 15, Mono, color = N.Muted, tracking = Track.WIDEST)
-            }
-            // Which network and which phone, where the eye already goes for status. Long names end in "…".
-            Row(Modifier.weight(1f), Arrangement.spacedBy(8.dp, Alignment.End), Alignment.CenterVertically) {
-                StatusChip(
-                    if (Connectivity.ssid != null || Ui.wifi) R.drawable.lc_wifi else R.drawable.lc_wifi_off,
-                    Connectivity.ssid ?: if (Ui.wifi) "Wi-Fi" else "No Wi-Fi",
-                    on = Ui.online,
-                )
-                StatusChip(
-                    R.drawable.lc_bluetooth,
-                    Connectivity.phone ?: if (Connectivity.bluetoothOn) "No phone" else "BT off",
-                    on = Connectivity.phone != null,
-                )
-            }
+        // Which network and which phone, where the eye already goes for status. Long names end in "…".
+        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp), Alignment.CenterVertically) {
+            StatusChip(
+                if (Connectivity.ssid != null || Ui.wifi) R.drawable.lc_wifi else R.drawable.lc_wifi_off,
+                Connectivity.ssid ?: if (Ui.wifi) "Wi-Fi" else "No Wi-Fi",
+                on = Ui.online,
+            )
+            StatusChip(
+                R.drawable.lc_bluetooth,
+                Connectivity.phone ?: if (Connectivity.bluetoothOn) "No phone" else "BT off",
+                on = Connectivity.phone != null,
+            )
         }
         Spacer(Modifier.height(10.dp))
         val nav by NavHub.state.collectAsState()
@@ -438,6 +432,8 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
             val art = info?.art
             if (art != null) {
                 Image(art.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            } else if (source == MediaSource.BT) {
+                BluetoothArt(info?.title)
             } else {
                 Box(Modifier.size(72.dp).border(2.dp, N.Muted, CircleShape), Alignment.Center) { RedDot(16, color = N.Muted) }
             }
@@ -451,6 +447,27 @@ private fun NowPlaying(info: MediaInfo?, source: MediaSource, listening: Boolean
             Txt(subtitle, 18, Sans, Modifier.padding(top = 2.dp), N.Muted, FontWeight.SemiBold)
             // Bluetooth without a timeline (NWD's module sends none): no bar rather than one stuck at 00:00.
             if (source != MediaSource.BT || (info?.durationMs ?: 0L) > 0) Progress(info, Modifier.padding(top = 18.dp))
+        }
+    }
+}
+
+/**
+ * NWD's module sends no cover art: the song's first letter in dot-matrix, and the phone it plays from.
+ * Nothing playing yet: the Bluetooth mark.
+ */
+@Composable
+private fun BluetoothArt(title: String?) {
+    val initial = title?.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()
+    Box(Modifier.fillMaxSize().dotMatrix().padding(16.dp)) {
+        if (initial != null) Txt("$initial", 120, Dot, Modifier.align(Alignment.Center), tight = true)
+        else LIcon(R.drawable.lc_bluetooth, 64, Modifier.align(Alignment.Center), N.Muted)
+        Row(
+            Modifier.align(Alignment.BottomStart),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LIcon(R.drawable.lc_bluetooth, 16, tint = N.Muted)
+            Txt(Connectivity.phone ?: "Bluetooth", 15, Mono, color = N.Muted, weight = FontWeight.Bold)
         }
     }
 }
