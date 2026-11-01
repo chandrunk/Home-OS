@@ -147,7 +147,7 @@ fun AppEffects() {
         while (true) {
             val t = TelemetryManager.state.value
             WeatherRepo.refreshIfDue(context, t.lat, t.lon)
-            WeatherRepo.refreshPlaceIfMoved(context, t.lat, t.lon)
+            WeatherRepo.refreshPlaceIfMoved(t.lat, t.lon)
             delay(60_000)
         }
     }

@@ -1,7 +1,6 @@
 package com.homeprojects.carlauncher
 
 import android.content.Context
-import android.location.Geocoder
 import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,8 +28,10 @@ data class Weather(
 }
 
 /**
- * Open-Meteo (no key) for the weather every 30 minutes. Android's Geocoder for the place name, looked
- * up again whenever the car has moved half a kilometre, so the neighbourhood follows the drive.
+ * Open-Meteo (no key) for the weather every 30 minutes. OpenStreetMap's Nominatim for the place name,
+ * looked up again whenever the car has moved half a kilometre (well under its one request a second),
+ * so the neighbourhood follows the drive. Not Android's Geocoder: the NWD firmware rejects GMS's
+ * geocode service ("wrong signature"), so it is never present there.
  */
 object WeatherRepo {
     private const val TAG = "CarHome.Weather"
@@ -46,7 +47,7 @@ object WeatherRepo {
     @Volatile private var placeRunning = false
     private const val PLACE_MOVE_M = 500f
 
-    fun refreshPlaceIfMoved(context: Context, lat: Double?, lon: Double?) {
+    fun refreshPlaceIfMoved(lat: Double?, lon: Double?) {
         if (lat == null || lon == null || placeRunning) return
         val last = placeAt
         if (last != null) {
@@ -55,10 +56,9 @@ object WeatherRepo {
             if (d[0] < PLACE_MOVE_M) return
         }
         placeRunning = true
-        val app = context.applicationContext
         thread(name = "place") {
             try {
-                placeName(app, lat, lon)?.let {
+                placeName(lat, lon)?.let {
                     state.value = state.value.copy(place = it)
                     placeAt = lat to lon
                 }
@@ -104,18 +104,23 @@ object WeatherRepo {
         }
     }
 
-    /** "Cibubur, Jakarta Timur": the neighbourhood, then the city without "Kota" or "Kabupaten". */
-    @Suppress("DEPRECATION")   // the async variant is Android 13+ only
-    private fun placeName(context: Context, lat: Double, lon: Double): String? = runCatching {
-        if (!Geocoder.isPresent()) return null
-        val a = Geocoder(context, Locale("id", "ID")).getFromLocation(lat, lon, 1)?.firstOrNull() ?: return null
-        Log.d(TAG, "place: sub=${a.subLocality} loc=${a.locality} subAdmin=${a.subAdminArea} admin=${a.adminArea}")
-        placeLabel(a.subLocality, a.locality, a.subAdminArea, a.adminArea)
-    }.getOrNull()
+    private fun placeName(lat: Double, lon: Double): String? = runCatching {
+        val json = fetch(
+            String.format(
+                Locale.ROOT,
+                "https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=%.5f&lon=%.5f&zoom=16&accept-language=id",
+                lat, lon,
+            )
+        )
+        val address = json.getJSONObject("address")
+        placeLabel { address.optString(it).ifBlank { null } }
+    }.onFailure { Log.w(TAG, "place failed: $it") }.getOrNull()
 
-    internal fun placeLabel(subLocality: String?, locality: String?, subAdmin: String?, admin: String?): String? {
-        val city = (subAdmin ?: admin)?.removePrefix("Kota ")?.removePrefix("Kabupaten ")
-        val near = (subLocality ?: locality)?.removePrefix("Kecamatan ")?.removePrefix("Kec. ")
+    /** "Cibubur, Jakarta Timur": the kelurahan or kecamatan, then the city without "Kota" or "Kabupaten". */
+    internal fun placeLabel(address: (String) -> String?): String? {
+        fun pick(vararg keys: String) = keys.firstNotNullOfOrNull(address)
+        val near = pick("village", "suburb", "neighbourhood", "hamlet", "town")
+        val city = pick("city_district", "city", "county", "state")?.removePrefix("Kota ")?.removePrefix("Kabupaten ")
         return listOfNotNull(near, city).distinct().joinToString(", ").ifEmpty { null }
     }
 
@@ -133,6 +138,7 @@ object WeatherRepo {
     private fun fetch(url: String): JSONObject {
         val c = URL(url).openConnection() as HttpURLConnection
         try {
+            c.setRequestProperty("User-Agent", "HomeOS-CarLauncher/0.1 (github.com/chandrunk/Home-OS)")   // Nominatim requires one
             c.connectTimeout = 6000
             c.readTimeout = 6000
             return JSONObject(c.inputStream.bufferedReader().use { it.readText() })

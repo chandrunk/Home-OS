@@ -34,8 +34,10 @@ class TripMathTest {
 
     @Test
     fun placeLabelIsNeighbourhoodThenCity() {
-        assertEquals("Cibubur, Jakarta Timur", WeatherRepo.placeLabel("Cibubur", "Ciracas", "Kota Jakarta Timur", "DKI Jakarta"))
-        assertEquals("Ciracas, Jakarta Timur", WeatherRepo.placeLabel(null, "Kecamatan Ciracas", "Kota Jakarta Timur", null))
-        assertEquals("Bogor", WeatherRepo.placeLabel(null, null, "Kabupaten Bogor", "Jawa Barat"))
+        fun label(vararg pairs: Pair<String, String>) = WeatherRepo.placeLabel(mapOf(*pairs)::get)
+        assertEquals("Cibubur, Jakarta Timur", label("village" to "Cibubur", "suburb" to "Ciracas",
+            "city_district" to "Jakarta Timur", "city" to "Daerah Khusus Ibukota Jakarta"))
+        assertEquals("Cibinong, Bogor", label("suburb" to "Cibinong", "county" to "Kabupaten Bogor", "state" to "Jawa Barat"))
+        assertEquals("Bandung", label("city" to "Kota Bandung"))
     }
 }
