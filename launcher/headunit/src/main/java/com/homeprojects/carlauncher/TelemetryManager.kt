@@ -26,7 +26,9 @@ data class Telemetry(
 }
 
 /**
- * GPS speedometer and trip computer. Updates every second from GPS_PROVIDER.
+ * GPS speedometer and trip computer. Updates every second from GPS_PROVIDER, for as long as the
+ * process lives. Not stopped in onDestroy: when Android replaces the Home activity, the old one's
+ * onDestroy can run after the new one's onCreate, and stopping there left the speed at "--" for good.
  * ponytail: listens from MainActivity, so while another app is in front Android may throttle the
  * fixes and the trip distance undercounts; move it into a foreground service if that shows.
  */
@@ -49,11 +51,6 @@ object TelemetryManager : LocationListener {
         m.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let {
             state.value = state.value.copy(lat = it.latitude, lon = it.longitude)
         }
-    }
-
-    fun stop() {
-        manager?.removeUpdates(this)
-        manager = null
     }
 
     fun resetTrip() {

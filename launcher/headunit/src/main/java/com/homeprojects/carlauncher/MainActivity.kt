@@ -121,7 +121,6 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        TelemetryManager.stop()
         CarHeadlightDetector.stop(this)
         runCatching { getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(network) }
         super.onDestroy()
