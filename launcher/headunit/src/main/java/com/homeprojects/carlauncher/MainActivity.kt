@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Weather every 30 minutes, and day or night: the driver's choice, or in AUTO the headlights or
- * sunset (Open-Meteo is_day; 18:00-06:00 until the first answer).
+ * sunset (Open-Meteo is_day while under two hours old; otherwise 18:00-06:00).
  */
 @Composable
 fun AppEffects() {
@@ -147,6 +147,7 @@ fun AppEffects() {
         while (true) {
             val t = TelemetryManager.state.value
             WeatherRepo.refreshIfDue(context, t.lat, t.lon)
+            WeatherRepo.refreshPlaceIfMoved(context, t.lat, t.lon)
             delay(60_000)
         }
     }
@@ -159,7 +160,7 @@ fun AppEffects() {
     val headlights = CarHeadlightDetector.headlightsOn(Look.threshold)
     LaunchedEffect(Look.mode, headlights, weather.isDay, minute) {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        val sunset = weather.isDay?.not() ?: (hour < 6 || hour >= 18)
+        val sunset = weather.isDayNow()?.not() ?: (hour < 6 || hour >= 18)
         Night.on = when (Look.mode) {
             ThemeMode.DAY -> false
             ThemeMode.NIGHT -> true

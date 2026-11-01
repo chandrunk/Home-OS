@@ -18,11 +18,16 @@ data class Telemetry(
     val bearing: Float? = null,     // kept from the last fix fast enough to have one
     val tripStartAt: Long? = null,  // elapsedRealtime of the trip's first fix
     val distanceM: Double = 0.0,
+    val maxKmh: Int = 0,            // this trip's top speed, from accurate fixes only
     val lastFixAt: Long = 0L,       // elapsedRealtime
     val lat: Double? = null,
     val lon: Double? = null,
 ) {
     fun hasFix(now: Long = SystemClock.elapsedRealtime()) = lastFixAt > 0 && now - lastFixAt < TripMath.FIX_STALE_MS
+
+    /** Average over the whole trip, stops included, as a car's trip computer counts it. */
+    fun avgKmh(now: Long = SystemClock.elapsedRealtime()): Int =
+        tripStartAt?.let { TripMath.avgKmh(distanceM, now - it) } ?: 0
 }
 
 /**
@@ -54,7 +59,7 @@ object TelemetryManager : LocationListener {
     }
 
     fun resetTrip() {
-        state.value = state.value.copy(tripStartAt = null, distanceM = 0.0)
+        state.value = state.value.copy(tripStartAt = null, distanceM = 0.0, maxKmh = 0)
     }
 
     override fun onLocationChanged(loc: Location) {
@@ -72,12 +77,15 @@ object TelemetryManager : LocationListener {
             val segment = prev.distanceTo(loc)
             if (TripMath.countSegment(segment, loc.accuracy, speedKmh)) distance += segment
         }
+        // A fix with poor accuracy can report a wild speed: it doesn't count for the top speed.
+        val top = if (!loc.hasAccuracy() || TripMath.accurate(loc.accuracy)) speedKmh.toInt() else 0
         val bearing = if (loc.hasBearing() && speedKmh >= TripMath.MIN_BEARING_KMH) loc.bearing else s.bearing
         state.value = Telemetry(
             speedKmh = speedKmh.toInt(),
             bearing = bearing,
             tripStartAt = if (parked || s.tripStartAt == null) now else s.tripStartAt,
             distanceM = distance,
+            maxKmh = maxOf(if (parked) 0 else s.maxKmh, top),
             lastFixAt = now,
             lat = loc.latitude,
             lon = loc.longitude,
@@ -114,7 +122,11 @@ object TripMath {
     /** GPS jitter while standing still must not add distance: count a segment only when the fix is
      *  accurate and the car is moving, or when it has clearly moved. */
     fun countSegment(segmentM: Float, accuracyM: Float, speedKmh: Float): Boolean =
-        accuracyM in 0f..MAX_ACCURACY_M && (speedKmh >= MIN_MOVING_KMH || segmentM >= JUMP_M)
+        accurate(accuracyM) && (speedKmh >= MIN_MOVING_KMH || segmentM >= JUMP_M)
+
+    fun accurate(accuracyM: Float) = accuracyM in 0f..MAX_ACCURACY_M
+
+    fun avgKmh(distanceM: Double, ms: Long): Int = if (ms < 60_000) 0 else (distanceM / (ms / 1000.0) * 3.6).toInt()
 
     fun speedFrom(distanceM: Float, dtMs: Long): Float = if (dtMs <= 0) 0f else distanceM / (dtMs / 1000f) * 3.6f
 

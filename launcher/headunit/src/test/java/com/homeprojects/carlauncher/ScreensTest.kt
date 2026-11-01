@@ -56,7 +56,7 @@ class ScreensTest {
         val now = SystemClock.elapsedRealtime()
         TelemetryManager.state.value = Telemetry(
             speedKmh = 68, bearing = 15f, tripStartAt = now - (42 * 60 + 18) * 1000L,
-            distanceM = 24_800.0, lastFixAt = maxOf(now, 1L), lat = -6.2088, lon = 106.8456,
+            distanceM = 24_800.0, maxKmh = 87, lastFixAt = maxOf(now, 1L), lat = -6.2088, lon = 106.8456,
         )
         ScaledToDesign {
             when (Look.skin) {

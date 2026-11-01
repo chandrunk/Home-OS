@@ -163,6 +163,7 @@ private fun TelemetryZone() {
                 Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 96, Sans, Modifier.layer(), color = p.text, weight = FontWeight.ExtraBold,
                     tracking = Track.TIGHT, tight = true)
                 Txt("KM/H", 20, Sans, Modifier.padding(top = 6.dp), p.text2, FontWeight.ExtraBold, 0.15f)
+                Txt("Avg ${t.avgKmh()} · Max ${t.maxKmh}", 15, Sans, Modifier.padding(top = 4.dp), p.text2, FontWeight.Bold)
             }
             Column(Modifier.width(212.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard("HEADING", t.bearing?.let(::headingWords) ?: "---° —", R.drawable.lc_navigation_2, p.accent, t.bearing ?: 0f)

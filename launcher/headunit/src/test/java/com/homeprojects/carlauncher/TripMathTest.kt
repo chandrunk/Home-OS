@@ -28,5 +28,14 @@ class TripMathTest {
         assertEquals("24.8 KM", TripMath.distance(24_812.0))
         assertEquals("850 M", TripMath.distance(850.4))
         assertEquals(36f, TripMath.speedFrom(10f, 1000), 0.01f)
+        assertEquals(42, TripMath.avgKmh(21_000.0, 30 * 60_000L))
+        assertEquals(0, TripMath.avgKmh(500.0, 30_000L))      // under a minute: no average yet
+    }
+
+    @Test
+    fun placeLabelIsNeighbourhoodThenCity() {
+        assertEquals("Cibubur, Jakarta Timur", WeatherRepo.placeLabel("Cibubur", "Ciracas", "Kota Jakarta Timur", "DKI Jakarta"))
+        assertEquals("Ciracas, Jakarta Timur", WeatherRepo.placeLabel(null, "Kecamatan Ciracas", "Kota Jakarta Timur", null))
+        assertEquals("Bogor", WeatherRepo.placeLabel(null, null, "Kabupaten Bogor", "Jawa Barat"))
     }
 }

@@ -19,9 +19,19 @@ data class Weather(
     val isDay: Boolean? = null,
     /** CLEAR, CLOUDY, FOG, DRIZZLE, RAIN, SNOW, STORM, FAIR; each skin words it its own way. */
     val condition: String = "",
-)
+    /** elapsedRealtime of the answer; 0 until the first one. */
+    val at: Long = 0L,
+) {
+    /** Day or night from Open-Meteo, only while the answer is recent. The head unit sleeps with the car
+     *  and the launcher lives on for days: last night's answer must not keep it dark the next morning. */
+    fun isDayNow(now: Long = SystemClock.elapsedRealtime()): Boolean? =
+        isDay?.takeIf { at > 0 && now - at < 2 * 60 * 60_000L }
+}
 
-/** Open-Meteo (no key) for the weather, Android's Geocoder for the place name; every 30 minutes. */
+/**
+ * Open-Meteo (no key) for the weather every 30 minutes. Android's Geocoder for the place name, looked
+ * up again whenever the car has moved half a kilometre, so the neighbourhood follows the drive.
+ */
 object WeatherRepo {
     private const val TAG = "CarHome.Weather"
     private const val REFRESH_MS = 30 * 60_000L
@@ -32,6 +42,31 @@ object WeatherRepo {
     val state = MutableStateFlow(Weather())
     @Volatile private var lastAt = 0L
     @Volatile private var running = false
+    @Volatile private var placeAt: Pair<Double, Double>? = null
+    @Volatile private var placeRunning = false
+    private const val PLACE_MOVE_M = 500f
+
+    fun refreshPlaceIfMoved(context: Context, lat: Double?, lon: Double?) {
+        if (lat == null || lon == null || placeRunning) return
+        val last = placeAt
+        if (last != null) {
+            val d = FloatArray(1)
+            android.location.Location.distanceBetween(last.first, last.second, lat, lon, d)
+            if (d[0] < PLACE_MOVE_M) return
+        }
+        placeRunning = true
+        val app = context.applicationContext
+        thread(name = "place") {
+            try {
+                placeName(app, lat, lon)?.let {
+                    state.value = state.value.copy(place = it)
+                    placeAt = lat to lon
+                }
+            } finally {
+                placeRunning = false
+            }
+        }
+    }
 
     fun refreshIfDue(context: Context, lat: Double?, lon: Double?) {
         val now = SystemClock.elapsedRealtime()
@@ -51,14 +86,14 @@ object WeatherRepo {
                     )
                 )
                 val current = json.getJSONObject("current")
-                val place = if (lat != null && lon != null) placeName(app, la, lo) else null
                 val day = current.optInt("is_day", 1) == 1
                 state.value = Weather(
-                    place = place ?: state.value.place,
+                    place = state.value.place,
                     tempC = Math.round(current.getDouble("temperature_2m")).toInt(),
                     label = (if (day) "DAY" else "NIGHT") + " / " + condition(current.optInt("weather_code", 0)),
                     isDay = day,
                     condition = condition(current.optInt("weather_code", 0)),
+                    at = SystemClock.elapsedRealtime(),
                 )
                 lastAt = SystemClock.elapsedRealtime()
             } catch (e: Exception) {
@@ -69,13 +104,20 @@ object WeatherRepo {
         }
     }
 
+    /** "Cibubur, Jakarta Timur": the neighbourhood, then the city without "Kota" or "Kabupaten". */
     @Suppress("DEPRECATION")   // the async variant is Android 13+ only
     private fun placeName(context: Context, lat: Double, lon: Double): String? = runCatching {
         if (!Geocoder.isPresent()) return null
-        val a = Geocoder(context, Locale.US).getFromLocation(lat, lon, 1)?.firstOrNull() ?: return null
-        val area = a.subAdminArea ?: a.locality ?: a.adminArea ?: return null
-        listOfNotNull(area, a.countryCode).joinToString(", ")
+        val a = Geocoder(context, Locale("id", "ID")).getFromLocation(lat, lon, 1)?.firstOrNull() ?: return null
+        Log.d(TAG, "place: sub=${a.subLocality} loc=${a.locality} subAdmin=${a.subAdminArea} admin=${a.adminArea}")
+        placeLabel(a.subLocality, a.locality, a.subAdminArea, a.adminArea)
     }.getOrNull()
+
+    internal fun placeLabel(subLocality: String?, locality: String?, subAdmin: String?, admin: String?): String? {
+        val city = (subAdmin ?: admin)?.removePrefix("Kota ")?.removePrefix("Kabupaten ")
+        val near = (subLocality ?: locality)?.removePrefix("Kecamatan ")?.removePrefix("Kec. ")
+        return listOfNotNull(near, city).distinct().joinToString(", ").ifEmpty { null }
+    }
 
     private fun condition(code: Int) = when (code) {
         0, 1 -> "CLEAR"

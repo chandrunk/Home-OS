@@ -152,6 +152,7 @@ private fun TelemetryZone() {
                 // Small next to the song: the car's own cluster already shows the speed.
                 Txt(if (fix) "${t.speedKmh ?: 0}" else "--", 120, Dot, Modifier.layer(), tight = true)
                 Txt("KM / H ///", 16, Mono, Modifier.padding(top = 8.dp), N.Red, FontWeight.Bold, 0.3f)
+                Txt("AVG ${t.avgKmh()} · MAX ${t.maxKmh}", 15, Mono, Modifier.padding(top = 6.dp), N.Muted, FontWeight.Bold)
             }
             Column(Modifier.width(206.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 StatCard("HEADING", t.bearing?.let(TripMath::heading) ?: "-- / ---°") {
